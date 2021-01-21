@@ -1,8 +1,12 @@
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-  typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.vega = {}));
-}(this, (function (exports) { 'use strict';
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('regl')) :
+  typeof define === 'function' && define.amd ? define(['exports', 'regl'], factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.vega = {}, global.regl));
+}(this, (function (exports, regl) { 'use strict';
+
+  function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+  var regl__default = /*#__PURE__*/_interopDefaultLegacy(regl);
 
   var name = "vega";
   var version = "5.18.0";
@@ -13377,92 +13381,6 @@
   }
   const domImage = () => typeof Image !== 'undefined' ? Image : null;
 
-  function initRange(domain, range) {
-    switch (arguments.length) {
-      case 0:
-        break;
-
-      case 1:
-        this.range(domain);
-        break;
-
-      default:
-        this.range(range).domain(domain);
-        break;
-    }
-
-    return this;
-  }
-  function initInterpolator(domain, interpolator) {
-    switch (arguments.length) {
-      case 0:
-        break;
-
-      case 1:
-        {
-          if (typeof domain === "function") this.interpolator(domain);else this.range(domain);
-          break;
-        }
-
-      default:
-        {
-          this.domain(domain);
-          if (typeof interpolator === "function") this.interpolator(interpolator);else this.range(interpolator);
-          break;
-        }
-    }
-
-    return this;
-  }
-
-  const implicit = Symbol("implicit");
-  function ordinal() {
-    var index = new Map(),
-        domain = [],
-        range = [],
-        unknown = implicit;
-
-    function scale(d) {
-      var key = d + "",
-          i = index.get(key);
-
-      if (!i) {
-        if (unknown !== implicit) return unknown;
-        index.set(key, i = domain.push(d));
-      }
-
-      return range[(i - 1) % range.length];
-    }
-
-    scale.domain = function (_) {
-      if (!arguments.length) return domain.slice();
-      domain = [], index = new Map();
-
-      for (const value of _) {
-        const key = value + "";
-        if (index.has(key)) continue;
-        index.set(key, domain.push(value));
-      }
-
-      return scale;
-    };
-
-    scale.range = function (_) {
-      return arguments.length ? (range = Array.from(_), scale) : range.slice();
-    };
-
-    scale.unknown = function (_) {
-      return arguments.length ? (unknown = _, scale) : unknown;
-    };
-
-    scale.copy = function () {
-      return ordinal(domain, range).unknown(unknown);
-    };
-
-    initRange.apply(scale, arguments);
-    return scale;
-  }
-
   function define (constructor, factory, prototype) {
     constructor.prototype = factory.prototype = prototype;
     prototype.constructor = constructor;
@@ -13974,6 +13892,92 @@
       return new Rgb(255 * (l + a * (A * cosh + B * sinh)), 255 * (l + a * (C * cosh + D * sinh)), 255 * (l + a * (E * cosh)), this.opacity);
     }
   }));
+
+  function initRange(domain, range) {
+    switch (arguments.length) {
+      case 0:
+        break;
+
+      case 1:
+        this.range(domain);
+        break;
+
+      default:
+        this.range(range).domain(domain);
+        break;
+    }
+
+    return this;
+  }
+  function initInterpolator(domain, interpolator) {
+    switch (arguments.length) {
+      case 0:
+        break;
+
+      case 1:
+        {
+          if (typeof domain === "function") this.interpolator(domain);else this.range(domain);
+          break;
+        }
+
+      default:
+        {
+          this.domain(domain);
+          if (typeof interpolator === "function") this.interpolator(interpolator);else this.range(interpolator);
+          break;
+        }
+    }
+
+    return this;
+  }
+
+  const implicit = Symbol("implicit");
+  function ordinal() {
+    var index = new Map(),
+        domain = [],
+        range = [],
+        unknown = implicit;
+
+    function scale(d) {
+      var key = d + "",
+          i = index.get(key);
+
+      if (!i) {
+        if (unknown !== implicit) return unknown;
+        index.set(key, i = domain.push(d));
+      }
+
+      return range[(i - 1) % range.length];
+    }
+
+    scale.domain = function (_) {
+      if (!arguments.length) return domain.slice();
+      domain = [], index = new Map();
+
+      for (const value of _) {
+        const key = value + "";
+        if (index.has(key)) continue;
+        index.set(key, domain.push(value));
+      }
+
+      return scale;
+    };
+
+    scale.range = function (_) {
+      return arguments.length ? (range = Array.from(_), scale) : range.slice();
+    };
+
+    scale.unknown = function (_) {
+      return arguments.length ? (unknown = _, scale) : unknown;
+    };
+
+    scale.copy = function () {
+      return ordinal(domain, range).unknown(unknown);
+    };
+
+    initRange.apply(scale, arguments);
+    return scale;
+  }
 
   function basis(t1, v0, v1, v2, v3) {
     var t2 = t1 * t1,
@@ -20067,6 +20071,118 @@
 
   });
 
+  function WebGLRenderer(loader) {
+    Renderer.call(this, loader);
+    this._options = {};
+    this._redraw = false;
+    this._dirty = new Bounds();
+    this._tempb = new Bounds();
+  }
+
+  const base$1 = Renderer.prototype;
+
+  const viewBounds$1 = (origin, width, height) => new Bounds().set(0, 0, width, height).translate(-origin[0], -origin[1]);
+
+  inherits(WebGLRenderer, Renderer, {
+    initialize(el, width, height, origin, scaleFactor, options) {
+      this._options = options || {};
+      this._canvas = this._options.externalContext ? null : domCanvas(1, 1, this._options.type); // instantiate a small canvas
+
+      if (el && this._canvas) {
+        domClear(el, 0).appendChild(this._canvas);
+
+        this._canvas.setAttribute("class", "marks");
+      } // this method will invoke resize to size the canvas appropriately
+
+
+      return base$1.initialize.call(this, el, width, height, origin, scaleFactor);
+    },
+
+    resize(width, height, origin, scaleFactor) {
+      base$1.resize.call(this, width, height, origin, scaleFactor);
+
+      if (this._canvas) {
+        // configure canvas size and transform
+        resize(this._canvas, this._width, this._height, this._origin, this._scale, this._options.context);
+      } else {
+        // external context needs to be scaled and positioned to origin
+        const gl = this._options.externalContext;
+        if (!gl) error("WebGLRenderer is missing a valid canvas or context.");
+        gl.scale(this._scale, this._scale);
+        gl.translate(this._origin[0], this._origin[1]);
+      }
+
+      this._redraw = true;
+      return this;
+    },
+
+    canvas() {
+      return this._canvas;
+    },
+
+    context() {
+      return this._options.externalContext || (this._canvas ? this._canvas.getContext("webgl") : null);
+    },
+
+    dirty(item) {
+      const b = this._tempb.clear().union(item.bounds);
+
+      let g = item.mark.group;
+
+      while (g) {
+        b.translate(g.x || 0, g.y || 0);
+        g = g.mark.group;
+      }
+
+      this._dirty.union(b);
+    },
+
+    _render(scene) {
+      const g = this.context(),
+            o = this._origin,
+            w = this._width,
+            h = this._height,
+            db = this._dirty,
+            vb = viewBounds$1(o, w, h); // setup
+
+      console.log(regl__default['default']);
+      const rgl = regl__default['default'].default(this.canvas());
+      const draw = rgl({
+        frag: "\n\t\t\t\t\t\tprecision mediump float;\n\t\t\t\t\t\tuniform vec4 fill;\n\t\t\t\t\t\tvoid main() {\n\t\t\t\t\t\t\t\tgl_FragColor = fill;\n\t\t\t\t\t\t}\n\t\t\t\t\t\t",
+        vert: "\n\t\t\t\t\t\tprecision mediump float;\n\t\t\t\t\t\tattribute vec2 position;\n\t\t\t\t\t\tvoid main() {\n\t\t\t\t\t\t\t\tgl_Position = vec4(position, 0, 1);\n\t\t\t\t\t\t}\n\t\t\t\t\t\t",
+        uniforms: {
+          fill: regl__default['default'].prop("color")
+        },
+        attributes: {
+          position: regl__default['default'].prop("position")
+        },
+        count: 6
+      });
+      /*
+      const mark = marks[scene.marktype];
+      console.log(mark);
+       const b =
+        this._redraw || db.empty()
+          ? ((this._redraw = false), vb.expand(1))
+          : clipToBounds(g, vb.intersect(db), o);
+       // render
+      this.draw(g, scene, b);
+       // takedown
+      db.clear();
+      */
+
+      return this;
+    },
+
+    draw(ctx, scene, bounds) {
+      const mark = Marks[scene.marktype];
+      if (scene.clip) clip$1(ctx, scene);
+      mark.draw.call(this, ctx, scene, bounds);
+      if (scene.clip) ctx.restore();
+    }
+
+  });
+
   function SVGHandler(loader, tooltip) {
     Handler.call(this, loader, tooltip);
     const h = this;
@@ -20392,7 +20508,7 @@
     this._defs = null;
   }
 
-  const base$1 = Renderer.prototype;
+  const base$2 = Renderer.prototype;
   inherits(SVGRenderer, Renderer, {
     /**
      * Initialize a new SVGRenderer instance.
@@ -20427,7 +20543,7 @@
 
 
       this.background(this._bgcolor);
-      return base$1.initialize.call(this, el, width, height, origin, scaleFactor);
+      return base$2.initialize.call(this, el, width, height, origin, scaleFactor);
     },
 
     /**
@@ -20438,7 +20554,7 @@
         this._svg.style.setProperty('background-color', bgcolor);
       }
 
-      return base$1.background.apply(this, arguments);
+      return base$2.background.apply(this, arguments);
     },
 
     /**
@@ -20452,7 +20568,7 @@
      * @return {SVGRenderer} - This renderer instance;
      */
     resize(width, height, origin, scaleFactor) {
-      base$1.resize.call(this, width, height, origin, scaleFactor);
+      base$2.resize.call(this, width, height, origin, scaleFactor);
 
       if (this._svg) {
         setAttributes(this._svg, {
@@ -21380,15 +21496,203 @@
     return s;
   }
 
-  const Canvas = 'canvas';
-  const PNG = 'png';
-  const SVG = 'svg';
-  const None$1 = 'none';
+  function WebGLHandler(loader, tooltip) {
+    Handler.call(this, loader, tooltip);
+    this._down = null;
+    this._touch = null;
+    this._first = true;
+    this._events = {};
+  }
+
+  const eventBundle$1 = type => type === TouchStartEvent || type === TouchMoveEvent || type === TouchEndEvent ? [TouchStartEvent, TouchMoveEvent, TouchEndEvent] : [type]; // lazily add listeners to the canvas as needed
+
+
+  function eventListenerCheck$1(handler, type) {
+    eventBundle$1(type).forEach(_ => addEventListener$1(handler, _));
+  }
+
+  function addEventListener$1(handler, type) {
+    const canvas = handler.canvas();
+
+    if (canvas && !handler._events[type]) {
+      handler._events[type] = 1;
+      canvas.addEventListener(type, handler[type] ? evt => handler[type](evt) : evt => handler.fire(type, evt));
+    }
+  }
+
+  function move$1(moveEvent, overEvent, outEvent) {
+    return function (evt) {
+      const a = this._active,
+            p = this.pickEvent(evt);
+
+      if (p === a) {
+        // active item and picked item are the same
+        this.fire(moveEvent, evt); // fire move
+      } else {
+        // active item and picked item are different
+        if (!a || !a.exit) {
+          // fire out for prior active item
+          // suppress if active item was removed from scene
+          this.fire(outEvent, evt);
+        }
+
+        this._active = p; // set new active item
+
+        this.fire(overEvent, evt); // fire over for new active item
+
+        this.fire(moveEvent, evt); // fire move for new active item
+      }
+    };
+  }
+
+  function inactive$1(type) {
+    return function (evt) {
+      this.fire(type, evt);
+      this._active = null;
+    };
+  }
+
+  inherits(WebGLHandler, Handler, {
+    initialize(el, origin, obj) {
+      this._canvas = el && domFind(el, "canvas"); // add minimal events required for proper state management
+
+      [ClickEvent, MouseDownEvent, MouseMoveEvent, MouseOutEvent, DragLeaveEvent].forEach(type => eventListenerCheck$1(this, type));
+      return Handler.prototype.initialize.call(this, el, origin, obj);
+    },
+
+    // return the backing canvas instance
+    canvas() {
+      return this._canvas;
+    },
+
+    // retrieve the current canvas context
+    context() {
+      return this._canvas.getContext("webgl");
+    },
+
+    // supported events
+    events: Events,
+
+    // to keep old versions of firefox happy
+    DOMMouseScroll(evt) {
+      this.fire(MouseWheelEvent, evt);
+    },
+
+    mousemove: move$1(MouseMoveEvent, MouseOverEvent, MouseOutEvent),
+    dragover: move$1(DragOverEvent, DragEnterEvent, DragLeaveEvent),
+    mouseout: inactive$1(MouseOutEvent),
+    dragleave: inactive$1(DragLeaveEvent),
+
+    mousedown(evt) {
+      this._down = this._active;
+      this.fire(MouseDownEvent, evt);
+    },
+
+    click(evt) {
+      if (this._down === this._active) {
+        this.fire(ClickEvent, evt);
+        this._down = null;
+      }
+    },
+
+    touchstart(evt) {
+      this._touch = this.pickEvent(evt.changedTouches[0]);
+
+      if (this._first) {
+        this._active = this._touch;
+        this._first = false;
+      }
+
+      this.fire(TouchStartEvent, evt, true);
+    },
+
+    touchmove(evt) {
+      this.fire(TouchMoveEvent, evt, true);
+    },
+
+    touchend(evt) {
+      this.fire(TouchEndEvent, evt, true);
+      this._touch = null;
+    },
+
+    // fire an event
+    fire(type, evt, touch) {
+      const a = touch ? this._touch : this._active,
+            h = this._handlers[type]; // set event type relative to scenegraph items
+
+      evt.vegaType = type; // handle hyperlinks and tooltips first
+
+      if (type === HrefEvent && a && a.href) {
+        this.handleHref(evt, a, a.href);
+      } else if (type === TooltipShowEvent || type === TooltipHideEvent) {
+        this.handleTooltip(evt, a, type !== TooltipHideEvent);
+      } // invoke all registered handlers
+
+
+      if (h) {
+        for (let i = 0, len = h.length; i < len; ++i) {
+          h[i].handler.call(this._obj, evt, a);
+        }
+      }
+    },
+
+    // add an event handler
+    on(type, handler) {
+      const name = this.eventName(type),
+            h = this._handlers,
+            i = this._handlerIndex(h[name], type, handler);
+
+      if (i < 0) {
+        eventListenerCheck$1(this, type);
+        (h[name] || (h[name] = [])).push({
+          type: type,
+          handler: handler
+        });
+      }
+
+      return this;
+    },
+
+    // remove an event handler
+    off(type, handler) {
+      const name = this.eventName(type),
+            h = this._handlers[name],
+            i = this._handlerIndex(h, type, handler);
+
+      if (i >= 0) {
+        h.splice(i, 1);
+      }
+
+      return this;
+    },
+
+    pickEvent(evt) {
+      const p = point$5(evt, this._canvas),
+            o = this._origin;
+      return this.pick(this._scene, p[0], p[1], p[0] - o[0], p[1] - o[1]);
+    },
+
+    // find the scenegraph item at the current mouse position
+    // x, y -- the absolute x, y mouse coordinates on the canvas element
+    // gx, gy -- the relative coordinates within the current group
+    pick(scene, x, y, gx, gy) {
+      const g = this.context(),
+            mark = Marks[scene.marktype];
+      return mark.pick.call(this, g, scene, x, y, gx, gy);
+    }
+
+  });
+  const Canvas = "canvas";
+  const PNG = "png";
+  const SVG = "svg";
+  const None$1 = "none";
+  const WebGL = "webgl";
   const RenderType = {
     Canvas: Canvas,
     PNG: PNG,
     SVG: SVG,
-    None: None$1
+    None: None$1,
+    WebZGL: WebGL
   };
   const modules = {};
   modules[Canvas] = modules[PNG] = {
@@ -21401,10 +21705,15 @@
     headless: SVGStringRenderer,
     handler: SVGHandler
   };
+  modules[WebGL] = {
+    renderer: WebGLRenderer,
+    headless: WebGLRenderer,
+    handler: WebGLHandler
+  };
   modules[None$1] = {};
 
   function renderModule(name, _) {
-    name = String(name || '').toLowerCase();
+    name = String(name || "").toLowerCase();
 
     if (arguments.length > 1) {
       modules[name] = _;
@@ -45077,6 +45386,7 @@
   exports.View = View;
   exports.WEEK = WEEK;
   exports.Warn = Warn;
+  exports.WebGLRenderer = WebGLRenderer;
   exports.YEAR = YEAR;
   exports.accessor = accessor;
   exports.accessorFields = accessorFields;
