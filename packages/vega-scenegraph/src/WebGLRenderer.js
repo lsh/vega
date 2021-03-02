@@ -1,14 +1,13 @@
 import Renderer from "./Renderer";
 import Bounds from "./Bounds";
-import marks from "./marks/index";
+import marks from "./webgl-marks/index";
 
 import { domClear } from "./util/dom";
 import clip from "./util/canvas/clip";
 import resize from "./util/canvas/resize";
 import { canvas } from "vega-canvas";
 import { error, inherits } from "vega-util";
-import { color } from "d3-color";
-import regl from "regl";
+import * as twgl from "twgl.js/dist/4.x/twgl-full.module.js";
 
 export default function WebGLRenderer(loader) {
   Renderer.call(this, loader);
@@ -94,7 +93,9 @@ inherits(WebGLRenderer, Renderer, {
   context() {
     return (
       this._options.externalContext ||
-      (this._canvas ? this._canvas.getContext("webgl") : null)
+      (this._canvas
+        ? this._canvas.getContext("webgl", { premultipliedAlpha: false })
+        : null)
     );
   },
 
@@ -111,62 +112,64 @@ inherits(WebGLRenderer, Renderer, {
   },
 
   _render(scene) {
-    const g = this.context(),
+    let c = this._canvas,
       o = this._origin,
       w = this._width,
       h = this._height,
       db = this._dirty,
       vb = viewBounds(o, w, h);
 
-    // setup
-    console.log(regl);
-    const rgl = regl.default(this.canvas());
-    const draw = rgl({
-      frag: `
-						precision mediump float;
-						uniform vec4 fill;
-						void main() {
-								gl_FragColor = fill;
-						}
-						`,
-      vert: `
-						precision mediump float;
-						attribute vec2 position;
-						void main() {
-								gl_Position = vec4(position, 0, 1);
-						}
-						`,
-      uniforms: {
-        fill: regl.prop("color"),
-      },
-      attributes: {
-        position: regl.prop("position"),
-      },
-      count: 6,
-    });
-    /*
-    const mark = marks[scene.marktype];
-    console.log(mark);
+    c = canvas(w, h, this._options.type);
+    document.body.append(c);
+    const gl = c.getContext("webgl", { premultipliedAlpha: false });
+    if (gl) {
+      this.draw(gl, scene, vb);
 
-    const b =
-      this._redraw || db.empty()
-        ? ((this._redraw = false), vb.expand(1))
-        : clipToBounds(g, vb.intersect(db), o);
+      const vs = /*glsl*/ `
+      attribute vec2 position;
+      attribute vec4 color;
+      varying vec4 col;
+      void main() {
+        col = color;
+        gl_Position = vec4(position, 0, 1);
+        gl_PointSize = sqrt(10.0);
+      }
+    `;
 
-    // render
-    this.draw(g, scene, b);
+      const fs = /*glsl*/ `
+      precision mediump float;
+      varying vec4 col;
+      void main() {
+        vec2 pc = gl_PointCoord.xy - 0.5;
+        gl_FragColor = mix(col, vec4(0), smoothstep(0.47, 0.53, length(pc)));
+      } 
+    `;
 
-    // takedown
-    db.clear();
-		*/
+      const programInfo = twgl.createProgramInfo(gl, [vs, fs]);
+      const buffers = twgl.createBufferInfoFromArrays(gl, this.ptsbuffer);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      twgl.resizeCanvasToDisplaySize(c);
+      gl.viewport(0, 0, w, h);
+
+      const uniforms = {
+        resolution: [w, h],
+      };
+      gl.useProgram(programInfo.program);
+      twgl.setBuffersAndAttributes(gl, programInfo, buffers);
+      twgl.setUniforms(programInfo, uniforms);
+      twgl.drawBufferInfo(gl, buffers, gl.POINTS);
+    } else {
+      console.log("No canvas");
+    }
 
     return this;
   },
 
   draw(ctx, scene, bounds) {
     const mark = marks[scene.marktype];
-    if (scene.clip) clip(ctx, scene);
+    //if (scene.clip) clip(ctx, scene);
     mark.draw.call(this, ctx, scene, bounds);
-    if (scene.clip) ctx.restore();
+    //if (scene.clip) ctx.restore();
   },
 });

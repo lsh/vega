@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 
 import babel from "@rollup/plugin-babel";
-import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import bundleSize from "rollup-plugin-bundle-size";
@@ -84,7 +83,6 @@ export default function (commandLineArgs) {
     }
 
     return [
-      commonjs(),
       json(),
       babel({
         presets: [
