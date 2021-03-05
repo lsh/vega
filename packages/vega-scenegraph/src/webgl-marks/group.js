@@ -1,27 +1,24 @@
 import { visit } from "../util/visit";
+import { scaleLinear } from "d3-scale";
 
-function draw(context, scene, bounds) {
-  this.posbuffer = [];
-  this.colbuffer = [];
+function draw(gl, scene, bounds) {
+  this.objbuffer = [];
+  this._aspect = this._height / this._width;
+  this._segments = 36;
+  this._angles = Array.from({ length: this._segments }, (_, i) =>
+    !i ? 0 : ((Math.PI * 2.0) / this._segments) * i
+  );
+  this.sclx = scaleLinear().domain([0, this._width]).range([-1, 1]);
+  this.scly = scaleLinear().domain([0, this._height]).range([1, -1]);
   visit(scene, (group) => {
     const gx = group.x || 0,
       gy = group.y || 0,
       fore = group.strokeForeground,
       opacity = group.opacity == null ? 1 : group.opacity;
     visit(group, (item) => {
-      this.draw(context, item, bounds);
+      this.draw(gl, item, bounds);
     });
   });
-  this.ptsbuffer = {
-    position: {
-      data: this.posbuffer,
-      numComponents: 2,
-    },
-    color: {
-      data: this.colbuffer,
-      numComponents: 4,
-    },
-  };
 }
 
 export default {

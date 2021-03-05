@@ -7,7 +7,11 @@ import clip from "./util/canvas/clip";
 import resize from "./util/canvas/resize";
 import { canvas } from "vega-canvas";
 import { error, inherits } from "vega-util";
-import * as twgl from "twgl.js/dist/4.x/twgl-full.module.js";
+import {
+  createProgramInfo,
+  resizeCanvasToDisplaySize,
+  drawObjectList,
+} from "twgl.js/dist/4.x/twgl-full.module.js";
 
 export default function WebGLRenderer(loader) {
   Renderer.call(this, loader);
@@ -120,45 +124,36 @@ inherits(WebGLRenderer, Renderer, {
       vb = viewBounds(o, w, h);
 
     c = canvas(w, h, this._options.type);
+    document.body.querySelector("canvas").remove();
     document.body.append(c);
     const gl = c.getContext("webgl", { premultipliedAlpha: false });
     if (gl) {
-      this.draw(gl, scene, vb);
-
       const vs = /*glsl*/ `
-      attribute vec2 position;
-      attribute vec4 color;
-      varying vec4 col;
-      void main() {
-        col = color;
-        gl_Position = vec4(position, 0, 1);
-        gl_PointSize = sqrt(10.0);
-      }
+        attribute vec2 position;
+        void main() {
+          gl_Position = vec4(position, 0, 1);
+        }
     `;
 
       const fs = /*glsl*/ `
-      precision mediump float;
-      varying vec4 col;
-      void main() {
-        vec2 pc = gl_PointCoord.xy - 0.5;
-        gl_FragColor = mix(col, vec4(0), smoothstep(0.47, 0.53, length(pc)));
-      } 
+        precision mediump float;
+        uniform vec4 fill;
+        void main() {
+          gl_FragColor = vec4((fill.xyz), fill.w);
+        }
     `;
 
-      const programInfo = twgl.createProgramInfo(gl, [vs, fs]);
-      const buffers = twgl.createBufferInfoFromArrays(gl, this.ptsbuffer);
+      const programInfo = createProgramInfo(gl, [vs, fs]);
+      this.programInfo = programInfo;
+      this.draw(gl, scene, vb);
+
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      twgl.resizeCanvasToDisplaySize(c);
+      resizeCanvasToDisplaySize(c);
       gl.viewport(0, 0, w, h);
 
-      const uniforms = {
-        resolution: [w, h],
-      };
       gl.useProgram(programInfo.program);
-      twgl.setBuffersAndAttributes(gl, programInfo, buffers);
-      twgl.setUniforms(programInfo, uniforms);
-      twgl.drawBufferInfo(gl, buffers, gl.POINTS);
+      drawObjectList(gl, this.objbuffer);
     } else {
       console.log("No canvas");
     }

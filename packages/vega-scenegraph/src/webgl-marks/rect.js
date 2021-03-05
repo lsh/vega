@@ -1,15 +1,40 @@
 import { color } from "d3-color";
+import { createBufferInfoFromArrays } from "twgl.js/dist/4.x/twgl-full.module.js";
 
 function draw(gl, item) {
   for (let i = 0; i < item.items.length; i++) {
-    const { x, y, fill } = item.items[i];
+    const { x, y, width, height, fill } = item.items[i];
     const col = color(fill);
-    this.posbuffer.push(Math.random() * 2.0 - 1.0);
-    this.posbuffer.push(Math.random() * 2.0 - 1.0);
-    this.colbuffer.push(col.r / 255);
-    this.colbuffer.push(col.g / 255);
-    this.colbuffer.push(col.b / 255);
-    this.colbuffer.push(col.opacity);
+    const positions = [
+      this.sclx(x),
+      this.scly(y),
+      0,
+      this.sclx(x + width),
+      this.scly(y),
+      0,
+      this.sclx(x),
+      this.scly(y + height),
+      0,
+      this.sclx(x),
+      this.scly(y + height),
+      0,
+      this.sclx(x + width),
+      this.scly(y),
+      0,
+      this.sclx(x + width),
+      this.scly(y + height),
+      0,
+    ];
+    const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, col.opacity];
+    this.objbuffer.push({
+      programInfo: this.programInfo,
+      bufferInfo: createBufferInfoFromArrays(gl, {
+        position: {
+          data: positions,
+        },
+      }),
+      uniforms: { fill: fillNormalized },
+    });
   }
 }
 

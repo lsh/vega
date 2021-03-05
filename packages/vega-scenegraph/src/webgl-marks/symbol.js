@@ -1,33 +1,33 @@
 import { color } from "d3-color";
+import { createBufferInfoFromArrays } from "twgl.js/dist/4.x/twgl-full.module.js";
 
-function draw(regl, item) {
-  const fill = color(item.fill);
-  regl({
-    frag: /*glsl*/ `
-        uniform vec4 fill;
-        void main() {
-            gl_FragColor = fill;
-        }
-        `,
-    vert: /*glsl*/ `
-        attribute vec2 position;
-        uniform float pointSize;
-        void main() {
-            gl_Position = vec4(position, 0, 1);
-            gl_PointSize = pointSize;
-        }
-    `,
-    attributes: {
-      position: [item.x, item.y],
-    },
-    uniforms: {
-      fill: [fill.r / 255.0, fill.g / 255.0, fill.b / 255.0, fill.opacity],
-      // nullish coalesce?
-      // also talk with Dominik about sizing
-      pointSize: item.size || item.width || item.height || 1.0,
-    },
-    count: 1,
-  });
+function draw(gl, item) {
+  for (let i = 0, n = item.items.length; i < n; i++) {
+    const { x, y, size, fill } = item.items[i];
+    const rad = (1.0 / this._width) * size * 0.1;
+    const col = color(fill);
+    const [cx, cy] = [this.sclx(x), this.scly(y)];
+    const positions = [];
+    for (let i = 0, n = this._segments; i < n; i++) {
+      const ang1 = this._angles[i];
+      const ang2 = this._angles[(i + 1) % this._segments];
+      const x1 = Math.cos(ang1) * rad * this._aspect;
+      const y1 = Math.sin(ang1) * rad;
+      const x2 = Math.cos(ang2) * rad * this._aspect;
+      const y2 = Math.sin(ang2) * rad;
+      positions.push(...[x1 + cx, y1 + cy, 0, cx, cy, 0, x2 + cx, y2 + cy, 0]);
+    }
+    const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, col.opacity];
+    this.objbuffer.push({
+      programInfo: this.programInfo,
+      bufferInfo: createBufferInfoFromArrays(gl, {
+        position: {
+          data: positions,
+        },
+      }),
+      uniforms: { fill: fillNormalized },
+    });
+  }
 }
 
 export default {
