@@ -23675,11 +23675,12 @@
         y,
         width,
         height,
-        fill
+        fill,
+        opacity
       } = item.items[i];
       const col = color(fill);
-      const positions = [this.sclx(x), this.scly(y), 0, this.sclx(x + width), this.scly(y), 0, this.sclx(x), this.scly(y + height), 0, this.sclx(x), this.scly(y + height), 0, this.sclx(x + width), this.scly(y), 0, this.sclx(x + width), this.scly(y + height), 0];
-      const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, col.opacity];
+      const positions = [x, y, 0, x + width, y, 0, x, y + height, 0, x, y + height, 0, x + width, y, 0, x + width, y + height, 0];
+      const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, opacity !== null && opacity !== void 0 ? opacity : 1];
       this.objbuffer.push({
         programInfo: this.programInfo,
         bufferInfo: createBufferInfoFromArrays(gl, {
@@ -23688,7 +23689,8 @@
           }
         }),
         uniforms: {
-          fill: fillNormalized
+          fill: fillNormalized,
+          resolution: [this._width, this._height]
         }
       });
     }
@@ -23710,11 +23712,11 @@
         x,
         y,
         size,
-        fill
+        fill,
+        opacity
       } = item.items[i];
-      const rad = 1.0 / this._width * size * 0.1;
+      const rad = size * 0.1;
       const col = color(fill);
-      const [cx, cy] = [this.sclx(x), this.scly(y)];
       const positions = [];
 
       for (let i = 0, n = this._segments; i < n; i++) {
@@ -23728,10 +23730,10 @@
         const x2 = Math.cos(ang2) * rad * this._aspect;
 
         const y2 = Math.sin(ang2) * rad;
-        positions.push(...[x1 + cx, y1 + cy, 0, cx, cy, 0, x2 + cx, y2 + cy, 0]);
+        positions.push(...[x1 + x, y1 + y, 0, x, y, 0, x2 + x, y2 + y, 0]);
       }
 
-      const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, col.opacity];
+      const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, 1];
       this.objbuffer.push({
         programInfo: this.programInfo,
         bufferInfo: createBufferInfoFromArrays(gl, {
@@ -23740,7 +23742,8 @@
           }
         }),
         uniforms: {
-          fill: fillNormalized
+          fill: fillNormalized,
+          resolution: [this._width, this._height]
         }
       });
     }
@@ -23850,7 +23853,7 @@
       if (gl) {
         const vs =
         /*glsl*/
-        "\n        attribute vec2 position;\n        void main() {\n          gl_Position = vec4(position, 0, 1);\n        }\n    ";
+        "\n        attribute vec2 position;\n        uniform vec2 resolution;\n        void main() {\n          vec2 pos = position/resolution;\n          pos.y = 1.0-pos.y;\n          pos = pos*2.0-1.0;\n          gl_Position = vec4(pos, 0, 1);\n        }\n    ";
         const fs =
         /*glsl*/
         "\n        precision mediump float;\n        uniform vec4 fill;\n        void main() {\n          gl_FragColor = vec4((fill.xyz), fill.w);\n        }\n    ";

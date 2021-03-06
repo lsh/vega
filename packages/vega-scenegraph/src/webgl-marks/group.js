@@ -8,8 +8,7 @@ function draw(gl, scene, bounds) {
   this._angles = Array.from({ length: this._segments }, (_, i) =>
     !i ? 0 : ((Math.PI * 2.0) / this._segments) * i
   );
-  this.sclx = scaleLinear().domain([0, this._width]).range([-1, 1]);
-  this.scly = scaleLinear().domain([0, this._height]).range([1, -1]);
+
   visit(scene, (group) => {
     const gx = group.x || 0,
       gy = group.y || 0,

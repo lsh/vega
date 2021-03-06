@@ -3,29 +3,39 @@ import { createBufferInfoFromArrays } from "twgl.js/dist/4.x/twgl-full.module.js
 
 function draw(gl, item) {
   for (let i = 0; i < item.items.length; i++) {
-    const { x, y, width, height, fill } = item.items[i];
+    const { x, y, width, height, fill, opacity } = item.items[i];
     const col = color(fill);
     const positions = [
-      this.sclx(x),
-      this.scly(y),
+      x,
+      y,
       0,
-      this.sclx(x + width),
-      this.scly(y),
+
+      x + width,
+      y,
       0,
-      this.sclx(x),
-      this.scly(y + height),
+
+      x,
+      y + height,
       0,
-      this.sclx(x),
-      this.scly(y + height),
+
+      x,
+      y + height,
       0,
-      this.sclx(x + width),
-      this.scly(y),
+
+      x + width,
+      y,
       0,
-      this.sclx(x + width),
-      this.scly(y + height),
+
+      x + width,
+      y + height,
       0,
     ];
-    const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, col.opacity];
+    const fillNormalized = [
+      col.r / 255,
+      col.g / 255,
+      col.b / 255,
+      opacity ?? 1,
+    ];
     this.objbuffer.push({
       programInfo: this.programInfo,
       bufferInfo: createBufferInfoFromArrays(gl, {
@@ -33,7 +43,10 @@ function draw(gl, item) {
           data: positions,
         },
       }),
-      uniforms: { fill: fillNormalized },
+      uniforms: {
+        fill: fillNormalized,
+        resolution: [this._width, this._height],
+      },
     });
   }
 }

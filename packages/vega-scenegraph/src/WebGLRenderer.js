@@ -130,8 +130,12 @@ inherits(WebGLRenderer, Renderer, {
     if (gl) {
       const vs = /*glsl*/ `
         attribute vec2 position;
+        uniform vec2 resolution;
         void main() {
-          gl_Position = vec4(position, 0, 1);
+          vec2 pos = position/resolution;
+          pos.y = 1.0-pos.y;
+          pos = pos*2.0-1.0;
+          gl_Position = vec4(pos, 0, 1);
         }
     `;
 
