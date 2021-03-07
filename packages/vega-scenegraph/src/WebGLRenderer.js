@@ -11,6 +11,7 @@ import {
   createProgramInfo,
   resizeCanvasToDisplaySize,
   drawObjectList,
+  getWebGLContext,
 } from "twgl.js/dist/4.x/twgl-full.module.js";
 
 export default function WebGLRenderer(loader) {
@@ -26,35 +27,19 @@ const base = Renderer.prototype;
 const viewBounds = (origin, width, height) =>
   new Bounds().set(0, 0, width, height).translate(-origin[0], -origin[1]);
 
-function clipToBounds(g, b, origin) {
-  // expand bounds by 1 pixel, then round to pixel boundaries
-  b.expand(1).round();
-
-  // align to base pixel grid in case of non-integer scaling (#2425)
-  if (g.pixelRatio % 1) {
-    b.scale(g.pixelRatio)
-      .round()
-      .scale(1 / g.pixelRatio);
-  }
-
-  // to avoid artifacts translate if origin has fractional pixels
-  b.translate(-(origin[0] % 1), -(origin[1] % 1));
-
-  // set clip path
-  g.beginPath();
-  g.rect(b.x1, b.y1, b.width(), b.height());
-  g.clip();
-
-  return b;
-}
-
 inherits(WebGLRenderer, Renderer, {
   initialize(el, width, height, origin, scaleFactor, options) {
     this._options = options || {};
 
-    this._canvas = this._options.externalContext
-      ? null
-      : canvas(1, 1, this._options.type); // instantiate a small canvas
+    this._canvas = canvas(
+      width / window.devicePixelRatio,
+      height / window.devicePixelRatio,
+      this._options.type
+    ); // instantiate a small canvas
+    this._context = getWebGLContext(this._canvas, {
+      antialias: true,
+      depth: false,
+    });
 
     if (el && this._canvas) {
       domClear(el, 0).appendChild(this._canvas);
@@ -65,6 +50,7 @@ inherits(WebGLRenderer, Renderer, {
     return base.initialize.call(this, el, width, height, origin, scaleFactor);
   },
 
+  /*
   resize(width, height, origin, scaleFactor) {
     base.resize.call(this, width, height, origin, scaleFactor);
 
@@ -89,18 +75,16 @@ inherits(WebGLRenderer, Renderer, {
     this._redraw = true;
     return this;
   },
+  */
 
   canvas() {
     return this._canvas;
   },
 
   context() {
-    return (
-      this._options.externalContext ||
-      (this._canvas
-        ? this._canvas.getContext("webgl", { premultipliedAlpha: false })
-        : null)
-    );
+    return this._canvas
+      ? getWebGLContext(this._canvas, { antialias: true, depth: false })
+      : null;
   },
 
   dirty(item) {
@@ -123,16 +107,19 @@ inherits(WebGLRenderer, Renderer, {
       db = this._dirty,
       vb = viewBounds(o, w, h);
 
-    c = canvas(w, h, this._options.type);
-    document.body.querySelector("canvas").remove();
-    document.body.append(c);
-    const gl = c.getContext("webgl", { premultipliedAlpha: false });
+    const gl = this.context();
+
     if (gl) {
       const vs = /*glsl*/ `
         attribute vec2 position;
         uniform vec2 resolution;
+        uniform vec2 center;
+        uniform vec2 scale;
+
         void main() {
-          vec2 pos = position/resolution;
+          vec2 pos = position * scale;
+          pos += center;
+          pos /= resolution;
           pos.y = 1.0-pos.y;
           pos = pos*2.0-1.0;
           gl_Position = vec4(pos, 0, 1);
@@ -153,13 +140,15 @@ inherits(WebGLRenderer, Renderer, {
 
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      resizeCanvasToDisplaySize(c);
+
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      resizeCanvasToDisplaySize(c, window.devicePixelRatio || 1);
       gl.viewport(0, 0, w, h);
 
       gl.useProgram(programInfo.program);
       drawObjectList(gl, this.objbuffer);
     } else {
-      console.log("No canvas");
+      console.log("Failed to construct WebGL instance.");
     }
 
     return this;

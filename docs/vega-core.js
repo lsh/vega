@@ -14009,14 +14009,14 @@
   });
 
   function devicePixelRatio() {
-    return typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    return typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
   }
 
   var pixelRatio = devicePixelRatio();
 
   function resize(canvas, width, height, origin, scaleFactor, opt) {
-    const inDOM = typeof HTMLElement !== 'undefined' && canvas instanceof HTMLElement && canvas.parentNode != null,
-          context = canvas.getContext('2d'),
+    const inDOM = typeof HTMLElement !== "undefined" && canvas instanceof HTMLElement && canvas.parentNode != null,
+          context = canvas.getContext("2d"),
           ratio = inDOM ? pixelRatio : scaleFactor;
     canvas.width = width * ratio;
     canvas.height = height * ratio;
@@ -14026,8 +14026,8 @@
     }
 
     if (inDOM && ratio !== 1) {
-      canvas.style.width = width + 'px';
-      canvas.style.height = height + 'px';
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
     }
 
     context.pixelRatio = ratio;
@@ -14162,880 +14162,6 @@
 
   });
 
-  function ascending$2(a, b) {
-    return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
-  }
-
-  function bisector(f) {
-    let delta = f;
-    let compare = f;
-
-    if (f.length === 1) {
-      delta = (d, x) => f(d) - x;
-
-      compare = ascendingComparator(f);
-    }
-
-    function left(a, x, lo, hi) {
-      if (lo == null) lo = 0;
-      if (hi == null) hi = a.length;
-
-      while (lo < hi) {
-        const mid = lo + hi >>> 1;
-        if (compare(a[mid], x) < 0) lo = mid + 1;else hi = mid;
-      }
-
-      return lo;
-    }
-
-    function right(a, x, lo, hi) {
-      if (lo == null) lo = 0;
-      if (hi == null) hi = a.length;
-
-      while (lo < hi) {
-        const mid = lo + hi >>> 1;
-        if (compare(a[mid], x) > 0) hi = mid;else lo = mid + 1;
-      }
-
-      return lo;
-    }
-
-    function center(a, x, lo, hi) {
-      if (lo == null) lo = 0;
-      if (hi == null) hi = a.length;
-      const i = left(a, x, lo, hi - 1);
-      return i > lo && delta(a[i - 1], x) > -delta(a[i], x) ? i - 1 : i;
-    }
-
-    return {
-      left,
-      center,
-      right
-    };
-  }
-
-  function ascendingComparator(f) {
-    return (d, x) => ascending$2(f(d), x);
-  }
-
-  function number$1(x) {
-    return x === null ? NaN : +x;
-  }
-
-  const ascendingBisect = bisector(ascending$2);
-  const bisectRight = ascendingBisect.right;
-  const bisectCenter = bisector(number$1).center;
-  var e10 = Math.sqrt(50),
-      e5 = Math.sqrt(10),
-      e2 = Math.sqrt(2);
-
-  function ticks(start, stop, count) {
-    var reverse,
-        i = -1,
-        n,
-        ticks,
-        step;
-    stop = +stop, start = +start, count = +count;
-    if (start === stop && count > 0) return [start];
-    if (reverse = stop < start) n = start, start = stop, stop = n;
-    if ((step = tickIncrement(start, stop, count)) === 0 || !isFinite(step)) return [];
-
-    if (step > 0) {
-      start = Math.ceil(start / step);
-      stop = Math.floor(stop / step);
-      ticks = new Array(n = Math.ceil(stop - start + 1));
-
-      while (++i < n) ticks[i] = (start + i) * step;
-    } else {
-      step = -step;
-      start = Math.ceil(start * step);
-      stop = Math.floor(stop * step);
-      ticks = new Array(n = Math.ceil(stop - start + 1));
-
-      while (++i < n) ticks[i] = (start + i) / step;
-    }
-
-    if (reverse) ticks.reverse();
-    return ticks;
-  }
-
-  function tickIncrement(start, stop, count) {
-    var step = (stop - start) / Math.max(0, count),
-        power = Math.floor(Math.log(step) / Math.LN10),
-        error = step / Math.pow(10, power);
-    return power >= 0 ? (error >= e10 ? 10 : error >= e5 ? 5 : error >= e2 ? 2 : 1) * Math.pow(10, power) : -Math.pow(10, -power) / (error >= e10 ? 10 : error >= e5 ? 5 : error >= e2 ? 2 : 1);
-  }
-
-  function tickStep(start, stop, count) {
-    var step0 = Math.abs(stop - start) / Math.max(0, count),
-        step1 = Math.pow(10, Math.floor(Math.log(step0) / Math.LN10)),
-        error = step0 / step1;
-    if (error >= e10) step1 *= 10;else if (error >= e5) step1 *= 5;else if (error >= e2) step1 *= 2;
-    return stop < start ? -step1 : step1;
-  }
-
-  function initRange(domain, range) {
-    switch (arguments.length) {
-      case 0:
-        break;
-
-      case 1:
-        this.range(domain);
-        break;
-
-      default:
-        this.range(range).domain(domain);
-        break;
-    }
-
-    return this;
-  }
-
-  var constant$1 = x => () => x;
-
-  function linear$1(a, d) {
-    return function (t) {
-      return a + t * d;
-    };
-  }
-
-  function exponential(a, b, y) {
-    return a = Math.pow(a, y), b = Math.pow(b, y) - a, y = 1 / y, function (t) {
-      return Math.pow(a + t * b, y);
-    };
-  }
-
-  function gamma(y) {
-    return (y = +y) === 1 ? nogamma : function (a, b) {
-      return b - a ? exponential(a, b, y) : constant$1(isNaN(a) ? b : a);
-    };
-  }
-
-  function nogamma(a, b) {
-    var d = b - a;
-    return d ? linear$1(a, d) : constant$1(isNaN(a) ? b : a);
-  }
-
-  var rgb = function rgbGamma(y) {
-    var color = gamma(y);
-
-    function rgb(start, end) {
-      var r = color((start = d3Color.rgb(start)).r, (end = d3Color.rgb(end)).r),
-          g = color(start.g, end.g),
-          b = color(start.b, end.b),
-          opacity = nogamma(start.opacity, end.opacity);
-      return function (t) {
-        start.r = r(t);
-        start.g = g(t);
-        start.b = b(t);
-        start.opacity = opacity(t);
-        return start + "";
-      };
-    }
-
-    rgb.gamma = rgbGamma;
-    return rgb;
-  }(1);
-
-  function numberArray(a, b) {
-    if (!b) b = [];
-    var n = a ? Math.min(b.length, a.length) : 0,
-        c = b.slice(),
-        i;
-    return function (t) {
-      for (i = 0; i < n; ++i) c[i] = a[i] * (1 - t) + b[i] * t;
-
-      return c;
-    };
-  }
-
-  function isNumberArray(x) {
-    return ArrayBuffer.isView(x) && !(x instanceof DataView);
-  }
-
-  function genericArray(a, b) {
-    var nb = b ? b.length : 0,
-        na = a ? Math.min(nb, a.length) : 0,
-        x = new Array(na),
-        c = new Array(nb),
-        i;
-
-    for (i = 0; i < na; ++i) x[i] = interpolate$1(a[i], b[i]);
-
-    for (; i < nb; ++i) c[i] = b[i];
-
-    return function (t) {
-      for (i = 0; i < na; ++i) c[i] = x[i](t);
-
-      return c;
-    };
-  }
-
-  function date(a, b) {
-    var d = new Date();
-    return a = +a, b = +b, function (t) {
-      return d.setTime(a * (1 - t) + b * t), d;
-    };
-  }
-
-  function interpolateNumber(a, b) {
-    return a = +a, b = +b, function (t) {
-      return a * (1 - t) + b * t;
-    };
-  }
-
-  function object(a, b) {
-    var i = {},
-        c = {},
-        k;
-    if (a === null || typeof a !== "object") a = {};
-    if (b === null || typeof b !== "object") b = {};
-
-    for (k in b) {
-      if (k in a) {
-        i[k] = interpolate$1(a[k], b[k]);
-      } else {
-        c[k] = b[k];
-      }
-    }
-
-    return function (t) {
-      for (k in i) c[k] = i[k](t);
-
-      return c;
-    };
-  }
-
-  var reA = /[-+]?(?:\d+\.?\d*|\.?\d+)(?:[eE][-+]?\d+)?/g,
-      reB = new RegExp(reA.source, "g");
-
-  function zero$1(b) {
-    return function () {
-      return b;
-    };
-  }
-
-  function one$1(b) {
-    return function (t) {
-      return b(t) + "";
-    };
-  }
-
-  function string(a, b) {
-    var bi = reA.lastIndex = reB.lastIndex = 0,
-        // scan index for next number in b
-    am,
-        // current match in a
-    bm,
-        // current match in b
-    bs,
-        // string preceding current number in b, if any
-    i = -1,
-        // index in s
-    s = [],
-        // string constants and placeholders
-    q = []; // number interpolators
-    // Coerce inputs to strings.
-
-    a = a + "", b = b + ""; // Interpolate pairs of numbers in a & b.
-
-    while ((am = reA.exec(a)) && (bm = reB.exec(b))) {
-      if ((bs = bm.index) > bi) {
-        // a string precedes the next number in b
-        bs = b.slice(bi, bs);
-        if (s[i]) s[i] += bs; // coalesce with previous string
-        else s[++i] = bs;
-      }
-
-      if ((am = am[0]) === (bm = bm[0])) {
-        // numbers in a & b match
-        if (s[i]) s[i] += bm; // coalesce with previous string
-        else s[++i] = bm;
-      } else {
-        // interpolate non-matching numbers
-        s[++i] = null;
-        q.push({
-          i: i,
-          x: interpolateNumber(am, bm)
-        });
-      }
-
-      bi = reB.lastIndex;
-    } // Add remains of b.
-
-
-    if (bi < b.length) {
-      bs = b.slice(bi);
-      if (s[i]) s[i] += bs; // coalesce with previous string
-      else s[++i] = bs;
-    } // Special optimization for only a single match.
-    // Otherwise, interpolate each of the numbers and rejoin the string.
-
-
-    return s.length < 2 ? q[0] ? one$1(q[0].x) : zero$1(b) : (b = q.length, function (t) {
-      for (var i = 0, o; i < b; ++i) s[(o = q[i]).i] = o.x(t);
-
-      return s.join("");
-    });
-  }
-
-  function interpolate$1(a, b) {
-    var t = typeof b,
-        c;
-    return b == null || t === "boolean" ? constant$1(b) : (t === "number" ? interpolateNumber : t === "string" ? (c = d3Color.color(b)) ? (b = c, rgb) : string : b instanceof d3Color.color ? rgb : b instanceof Date ? date : isNumberArray(b) ? numberArray : Array.isArray(b) ? genericArray : typeof b.valueOf !== "function" && typeof b.toString !== "function" || isNaN(b) ? object : interpolateNumber)(a, b);
-  }
-
-  function interpolateRound(a, b) {
-    return a = +a, b = +b, function (t) {
-      return Math.round(a * (1 - t) + b * t);
-    };
-  }
-
-  function constants(x) {
-    return function () {
-      return x;
-    };
-  }
-
-  function number$2(x) {
-    return +x;
-  }
-
-  var unit = [0, 1];
-
-  function identity$1(x) {
-    return x;
-  }
-
-  function normalize(a, b) {
-    return (b -= a = +a) ? function (x) {
-      return (x - a) / b;
-    } : constants(isNaN(b) ? NaN : 0.5);
-  }
-
-  function clamper(a, b) {
-    var t;
-    if (a > b) t = a, a = b, b = t;
-    return function (x) {
-      return Math.max(a, Math.min(b, x));
-    };
-  } // normalize(a, b)(x) takes a domain value x in [a,b] and returns the corresponding parameter t in [0,1].
-  // interpolate(a, b)(t) takes a parameter t in [0,1] and returns the corresponding range value x in [a,b].
-
-
-  function bimap(domain, range, interpolate) {
-    var d0 = domain[0],
-        d1 = domain[1],
-        r0 = range[0],
-        r1 = range[1];
-    if (d1 < d0) d0 = normalize(d1, d0), r0 = interpolate(r1, r0);else d0 = normalize(d0, d1), r0 = interpolate(r0, r1);
-    return function (x) {
-      return r0(d0(x));
-    };
-  }
-
-  function polymap(domain, range, interpolate) {
-    var j = Math.min(domain.length, range.length) - 1,
-        d = new Array(j),
-        r = new Array(j),
-        i = -1; // Reverse descending domains.
-
-    if (domain[j] < domain[0]) {
-      domain = domain.slice().reverse();
-      range = range.slice().reverse();
-    }
-
-    while (++i < j) {
-      d[i] = normalize(domain[i], domain[i + 1]);
-      r[i] = interpolate(range[i], range[i + 1]);
-    }
-
-    return function (x) {
-      var i = bisectRight(domain, x, 1, j) - 1;
-      return r[i](d[i](x));
-    };
-  }
-
-  function copy(source, target) {
-    return target.domain(source.domain()).range(source.range()).interpolate(source.interpolate()).clamp(source.clamp()).unknown(source.unknown());
-  }
-
-  function transformer() {
-    var domain = unit,
-        range = unit,
-        interpolate$1$1 = interpolate$1,
-        transform,
-        untransform,
-        unknown,
-        clamp = identity$1,
-        piecewise,
-        output,
-        input;
-
-    function rescale() {
-      var n = Math.min(domain.length, range.length);
-      if (clamp !== identity$1) clamp = clamper(domain[0], domain[n - 1]);
-      piecewise = n > 2 ? polymap : bimap;
-      output = input = null;
-      return scale;
-    }
-
-    function scale(x) {
-      return isNaN(x = +x) ? unknown : (output || (output = piecewise(domain.map(transform), range, interpolate$1$1)))(transform(clamp(x)));
-    }
-
-    scale.invert = function (y) {
-      return clamp(untransform((input || (input = piecewise(range, domain.map(transform), interpolateNumber)))(y)));
-    };
-
-    scale.domain = function (_) {
-      return arguments.length ? (domain = Array.from(_, number$2), rescale()) : domain.slice();
-    };
-
-    scale.range = function (_) {
-      return arguments.length ? (range = Array.from(_), rescale()) : range.slice();
-    };
-
-    scale.rangeRound = function (_) {
-      return range = Array.from(_), interpolate$1$1 = interpolateRound, rescale();
-    };
-
-    scale.clamp = function (_) {
-      return arguments.length ? (clamp = _ ? true : identity$1, rescale()) : clamp !== identity$1;
-    };
-
-    scale.interpolate = function (_) {
-      return arguments.length ? (interpolate$1$1 = _, rescale()) : interpolate$1$1;
-    };
-
-    scale.unknown = function (_) {
-      return arguments.length ? (unknown = _, scale) : unknown;
-    };
-
-    return function (t, u) {
-      transform = t, untransform = u;
-      return rescale();
-    };
-  }
-
-  function continuous$1() {
-    return transformer()(identity$1, identity$1);
-  }
-
-  function formatDecimal(x) {
-    return Math.abs(x = Math.round(x)) >= 1e21 ? x.toLocaleString("en").replace(/,/g, "") : x.toString(10);
-  } // Computes the decimal coefficient and exponent of the specified number x with
-  // significant digits p, where x is positive and p is in [1, 21] or undefined.
-  // For example, formatDecimalParts(1.23) returns ["123", 0].
-
-
-  function formatDecimalParts(x, p) {
-    if ((i = (x = p ? x.toExponential(p - 1) : x.toExponential()).indexOf("e")) < 0) return null; // NaN, ±Infinity
-
-    var i,
-        coefficient = x.slice(0, i); // The string returned by toExponential either has the form \d\.\d+e[-+]\d+
-    // (e.g., 1.2e+3) or the form \de[-+]\d+ (e.g., 1e+3).
-
-    return [coefficient.length > 1 ? coefficient[0] + coefficient.slice(2) : coefficient, +x.slice(i + 1)];
-  }
-
-  function exponent(x) {
-    return x = formatDecimalParts(Math.abs(x)), x ? x[1] : NaN;
-  }
-
-  function formatGroup(grouping, thousands) {
-    return function (value, width) {
-      var i = value.length,
-          t = [],
-          j = 0,
-          g = grouping[0],
-          length = 0;
-
-      while (i > 0 && g > 0) {
-        if (length + g + 1 > width) g = Math.max(1, width - length);
-        t.push(value.substring(i -= g, i + g));
-        if ((length += g + 1) > width) break;
-        g = grouping[j = (j + 1) % grouping.length];
-      }
-
-      return t.reverse().join(thousands);
-    };
-  }
-
-  function formatNumerals(numerals) {
-    return function (value) {
-      return value.replace(/[0-9]/g, function (i) {
-        return numerals[+i];
-      });
-    };
-  } // [[fill]align][sign][symbol][0][width][,][.precision][~][type]
-
-
-  var re = /^(?:(.)?([<>=^]))?([+\-( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?(~)?([a-z%])?$/i;
-
-  function formatSpecifier(specifier) {
-    if (!(match = re.exec(specifier))) throw new Error("invalid format: " + specifier);
-    var match;
-    return new FormatSpecifier({
-      fill: match[1],
-      align: match[2],
-      sign: match[3],
-      symbol: match[4],
-      zero: match[5],
-      width: match[6],
-      comma: match[7],
-      precision: match[8] && match[8].slice(1),
-      trim: match[9],
-      type: match[10]
-    });
-  }
-
-  formatSpecifier.prototype = FormatSpecifier.prototype; // instanceof
-
-  function FormatSpecifier(specifier) {
-    this.fill = specifier.fill === undefined ? " " : specifier.fill + "";
-    this.align = specifier.align === undefined ? ">" : specifier.align + "";
-    this.sign = specifier.sign === undefined ? "-" : specifier.sign + "";
-    this.symbol = specifier.symbol === undefined ? "" : specifier.symbol + "";
-    this.zero = !!specifier.zero;
-    this.width = specifier.width === undefined ? undefined : +specifier.width;
-    this.comma = !!specifier.comma;
-    this.precision = specifier.precision === undefined ? undefined : +specifier.precision;
-    this.trim = !!specifier.trim;
-    this.type = specifier.type === undefined ? "" : specifier.type + "";
-  }
-
-  FormatSpecifier.prototype.toString = function () {
-    return this.fill + this.align + this.sign + this.symbol + (this.zero ? "0" : "") + (this.width === undefined ? "" : Math.max(1, this.width | 0)) + (this.comma ? "," : "") + (this.precision === undefined ? "" : "." + Math.max(0, this.precision | 0)) + (this.trim ? "~" : "") + this.type;
-  }; // Trims insignificant zeros, e.g., replaces 1.2000k with 1.2k.
-
-
-  function formatTrim(s) {
-    out: for (var n = s.length, i = 1, i0 = -1, i1; i < n; ++i) {
-      switch (s[i]) {
-        case ".":
-          i0 = i1 = i;
-          break;
-
-        case "0":
-          if (i0 === 0) i0 = i;
-          i1 = i;
-          break;
-
-        default:
-          if (!+s[i]) break out;
-          if (i0 > 0) i0 = 0;
-          break;
-      }
-    }
-
-    return i0 > 0 ? s.slice(0, i0) + s.slice(i1 + 1) : s;
-  }
-
-  var prefixExponent;
-
-  function formatPrefixAuto(x, p) {
-    var d = formatDecimalParts(x, p);
-    if (!d) return x + "";
-    var coefficient = d[0],
-        exponent = d[1],
-        i = exponent - (prefixExponent = Math.max(-8, Math.min(8, Math.floor(exponent / 3))) * 3) + 1,
-        n = coefficient.length;
-    return i === n ? coefficient : i > n ? coefficient + new Array(i - n + 1).join("0") : i > 0 ? coefficient.slice(0, i) + "." + coefficient.slice(i) : "0." + new Array(1 - i).join("0") + formatDecimalParts(x, Math.max(0, p + i - 1))[0]; // less than 1y!
-  }
-
-  function formatRounded(x, p) {
-    var d = formatDecimalParts(x, p);
-    if (!d) return x + "";
-    var coefficient = d[0],
-        exponent = d[1];
-    return exponent < 0 ? "0." + new Array(-exponent).join("0") + coefficient : coefficient.length > exponent + 1 ? coefficient.slice(0, exponent + 1) + "." + coefficient.slice(exponent + 1) : coefficient + new Array(exponent - coefficient.length + 2).join("0");
-  }
-
-  var formatTypes = {
-    "%": (x, p) => (x * 100).toFixed(p),
-    "b": x => Math.round(x).toString(2),
-    "c": x => x + "",
-    "d": formatDecimal,
-    "e": (x, p) => x.toExponential(p),
-    "f": (x, p) => x.toFixed(p),
-    "g": (x, p) => x.toPrecision(p),
-    "o": x => Math.round(x).toString(8),
-    "p": (x, p) => formatRounded(x * 100, p),
-    "r": formatRounded,
-    "s": formatPrefixAuto,
-    "X": x => Math.round(x).toString(16).toUpperCase(),
-    "x": x => Math.round(x).toString(16)
-  };
-
-  function identity$1$1(x) {
-    return x;
-  }
-
-  var map$1 = Array.prototype.map,
-      prefixes = ["y", "z", "a", "f", "p", "n", "µ", "m", "", "k", "M", "G", "T", "P", "E", "Z", "Y"];
-
-  function formatLocale(locale) {
-    var group = locale.grouping === undefined || locale.thousands === undefined ? identity$1$1 : formatGroup(map$1.call(locale.grouping, Number), locale.thousands + ""),
-        currencyPrefix = locale.currency === undefined ? "" : locale.currency[0] + "",
-        currencySuffix = locale.currency === undefined ? "" : locale.currency[1] + "",
-        decimal = locale.decimal === undefined ? "." : locale.decimal + "",
-        numerals = locale.numerals === undefined ? identity$1$1 : formatNumerals(map$1.call(locale.numerals, String)),
-        percent = locale.percent === undefined ? "%" : locale.percent + "",
-        minus = locale.minus === undefined ? "−" : locale.minus + "",
-        nan = locale.nan === undefined ? "NaN" : locale.nan + "";
-
-    function newFormat(specifier) {
-      specifier = formatSpecifier(specifier);
-      var fill = specifier.fill,
-          align = specifier.align,
-          sign = specifier.sign,
-          symbol = specifier.symbol,
-          zero = specifier.zero,
-          width = specifier.width,
-          comma = specifier.comma,
-          precision = specifier.precision,
-          trim = specifier.trim,
-          type = specifier.type; // The "n" type is an alias for ",g".
-
-      if (type === "n") comma = true, type = "g"; // The "" type, and any invalid type, is an alias for ".12~g".
-      else if (!formatTypes[type]) precision === undefined && (precision = 12), trim = true, type = "g"; // If zero fill is specified, padding goes after sign and before digits.
-
-      if (zero || fill === "0" && align === "=") zero = true, fill = "0", align = "="; // Compute the prefix and suffix.
-      // For SI-prefix, the suffix is lazily computed.
-
-      var prefix = symbol === "$" ? currencyPrefix : symbol === "#" && /[boxX]/.test(type) ? "0" + type.toLowerCase() : "",
-          suffix = symbol === "$" ? currencySuffix : /[%p]/.test(type) ? percent : ""; // What format function should we use?
-      // Is this an integer type?
-      // Can this type generate exponential notation?
-
-      var formatType = formatTypes[type],
-          maybeSuffix = /[defgprs%]/.test(type); // Set the default precision if not specified,
-      // or clamp the specified precision to the supported range.
-      // For significant precision, it must be in [1, 21].
-      // For fixed precision, it must be in [0, 20].
-
-      precision = precision === undefined ? 6 : /[gprs]/.test(type) ? Math.max(1, Math.min(21, precision)) : Math.max(0, Math.min(20, precision));
-
-      function format(value) {
-        var valuePrefix = prefix,
-            valueSuffix = suffix,
-            i,
-            n,
-            c;
-
-        if (type === "c") {
-          valueSuffix = formatType(value) + valueSuffix;
-          value = "";
-        } else {
-          value = +value; // Determine the sign. -0 is not less than 0, but 1 / -0 is!
-
-          var valueNegative = value < 0 || 1 / value < 0; // Perform the initial formatting.
-
-          value = isNaN(value) ? nan : formatType(Math.abs(value), precision); // Trim insignificant zeros.
-
-          if (trim) value = formatTrim(value); // If a negative value rounds to zero after formatting, and no explicit positive sign is requested, hide the sign.
-
-          if (valueNegative && +value === 0 && sign !== "+") valueNegative = false; // Compute the prefix and suffix.
-
-          valuePrefix = (valueNegative ? sign === "(" ? sign : minus : sign === "-" || sign === "(" ? "" : sign) + valuePrefix;
-          valueSuffix = (type === "s" ? prefixes[8 + prefixExponent / 3] : "") + valueSuffix + (valueNegative && sign === "(" ? ")" : ""); // Break the formatted value into the integer “value” part that can be
-          // grouped, and fractional or exponential “suffix” part that is not.
-
-          if (maybeSuffix) {
-            i = -1, n = value.length;
-
-            while (++i < n) {
-              if (c = value.charCodeAt(i), 48 > c || c > 57) {
-                valueSuffix = (c === 46 ? decimal + value.slice(i + 1) : value.slice(i)) + valueSuffix;
-                value = value.slice(0, i);
-                break;
-              }
-            }
-          }
-        } // If the fill character is not "0", grouping is applied before padding.
-
-
-        if (comma && !zero) value = group(value, Infinity); // Compute the padding.
-
-        var length = valuePrefix.length + value.length + valueSuffix.length,
-            padding = length < width ? new Array(width - length + 1).join(fill) : ""; // If the fill character is "0", grouping is applied after padding.
-
-        if (comma && zero) value = group(padding + value, padding.length ? width - valueSuffix.length : Infinity), padding = ""; // Reconstruct the final output based on the desired alignment.
-
-        switch (align) {
-          case "<":
-            value = valuePrefix + value + valueSuffix + padding;
-            break;
-
-          case "=":
-            value = valuePrefix + padding + value + valueSuffix;
-            break;
-
-          case "^":
-            value = padding.slice(0, length = padding.length >> 1) + valuePrefix + value + valueSuffix + padding.slice(length);
-            break;
-
-          default:
-            value = padding + valuePrefix + value + valueSuffix;
-            break;
-        }
-
-        return numerals(value);
-      }
-
-      format.toString = function () {
-        return specifier + "";
-      };
-
-      return format;
-    }
-
-    function formatPrefix(specifier, value) {
-      var f = newFormat((specifier = formatSpecifier(specifier), specifier.type = "f", specifier)),
-          e = Math.max(-8, Math.min(8, Math.floor(exponent(value) / 3))) * 3,
-          k = Math.pow(10, -e),
-          prefix = prefixes[8 + e / 3];
-      return function (value) {
-        return f(k * value) + prefix;
-      };
-    }
-
-    return {
-      format: newFormat,
-      formatPrefix: formatPrefix
-    };
-  }
-
-  var locale$1;
-  var format$2;
-  var formatPrefix;
-  defaultLocale$1({
-    thousands: ",",
-    grouping: [3],
-    currency: ["$", ""]
-  });
-
-  function defaultLocale$1(definition) {
-    locale$1 = formatLocale(definition);
-    format$2 = locale$1.format;
-    formatPrefix = locale$1.formatPrefix;
-    return locale$1;
-  }
-
-  function precisionFixed(step) {
-    return Math.max(0, -exponent(Math.abs(step)));
-  }
-
-  function precisionPrefix(step, value) {
-    return Math.max(0, Math.max(-8, Math.min(8, Math.floor(exponent(value) / 3))) * 3 - exponent(Math.abs(step)));
-  }
-
-  function precisionRound(step, max) {
-    step = Math.abs(step), max = Math.abs(max) - step;
-    return Math.max(0, exponent(max) - exponent(step)) + 1;
-  }
-
-  function tickFormat$1(start, stop, count, specifier) {
-    var step = tickStep(start, stop, count),
-        precision;
-    specifier = formatSpecifier(specifier == null ? ",f" : specifier);
-
-    switch (specifier.type) {
-      case "s":
-        {
-          var value = Math.max(Math.abs(start), Math.abs(stop));
-          if (specifier.precision == null && !isNaN(precision = precisionPrefix(step, value))) specifier.precision = precision;
-          return formatPrefix(specifier, value);
-        }
-
-      case "":
-      case "e":
-      case "g":
-      case "p":
-      case "r":
-        {
-          if (specifier.precision == null && !isNaN(precision = precisionRound(step, Math.max(Math.abs(start), Math.abs(stop))))) specifier.precision = precision - (specifier.type === "e");
-          break;
-        }
-
-      case "f":
-      case "%":
-        {
-          if (specifier.precision == null && !isNaN(precision = precisionFixed(step))) specifier.precision = precision - (specifier.type === "%") * 2;
-          break;
-        }
-    }
-
-    return format$2(specifier);
-  }
-
-  function linearish(scale) {
-    var domain = scale.domain;
-
-    scale.ticks = function (count) {
-      var d = domain();
-      return ticks(d[0], d[d.length - 1], count == null ? 10 : count);
-    };
-
-    scale.tickFormat = function (count, specifier) {
-      var d = domain();
-      return tickFormat$1(d[0], d[d.length - 1], count == null ? 10 : count, specifier);
-    };
-
-    scale.nice = function (count) {
-      if (count == null) count = 10;
-      var d = domain();
-      var i0 = 0;
-      var i1 = d.length - 1;
-      var start = d[i0];
-      var stop = d[i1];
-      var prestep;
-      var step;
-      var maxIter = 10;
-
-      if (stop < start) {
-        step = start, start = stop, stop = step;
-        step = i0, i0 = i1, i1 = step;
-      }
-
-      while (maxIter-- > 0) {
-        step = tickIncrement(start, stop, count);
-
-        if (step === prestep) {
-          d[i0] = start;
-          d[i1] = stop;
-          return domain(d);
-        } else if (step > 0) {
-          start = Math.floor(start / step) * step;
-          stop = Math.ceil(stop / step) * step;
-        } else if (step < 0) {
-          start = Math.ceil(start * step) / step;
-          stop = Math.floor(stop * step) / step;
-        } else {
-          break;
-        }
-
-        prestep = step;
-      }
-
-      return scale;
-    };
-
-    return scale;
-  }
-
-  function linear$1$1() {
-    var scale = continuous$1();
-
-    scale.copy = function () {
-      return copy(scale, linear$1$1());
-    };
-
-    initRange.apply(scale, arguments);
-    return linearish(scale);
-  }
-
   function draw$5(gl, scene, bounds) {
     this.objbuffer = [];
     this._aspect = this._height / this._width;
@@ -15043,8 +14169,6 @@
     this._angles = Array.from({
       length: this._segments
     }, (_, i) => !i ? 0 : Math.PI * 2.0 / this._segments * i);
-    this.sclx = linear$1$1().domain([0, this._width]).range([-1, 1]);
-    this.scly = linear$1$1().domain([0, this._height]).range([1, -1]);
     visit(scene, group => {
       const gx = group.x || 0,
             gy = group.y || 0,
@@ -15209,6 +14333,10 @@
 
   function error$1(...args) {
     console.error(...args);
+  }
+
+  function warn(...args) {
+    console.warn(...args);
   }
 
   function isBuffer$1(gl, t) {
@@ -17739,6 +16867,166 @@
       gl.bindVertexArray(null);
     }
   }
+  const prefixRE = /^(.*?)_/;
+
+  function addExtensionToContext(gl, extensionName) {
+    glEnumToString(gl, 0);
+    const ext = gl.getExtension(extensionName);
+
+    if (ext) {
+      const enums = {};
+      const fnSuffix = prefixRE.exec(extensionName)[1];
+      const enumSuffix = '_' + fnSuffix;
+
+      for (const key in ext) {
+        const value = ext[key];
+        const isFunc = typeof value === 'function';
+        const suffix = isFunc ? fnSuffix : enumSuffix;
+        let name = key; // examples of where this is not true are WEBGL_compressed_texture_s3tc
+        // and WEBGL_compressed_texture_pvrtc
+
+        if (key.endsWith(suffix)) {
+          name = key.substring(0, key.length - suffix.length);
+        }
+
+        if (gl[name] !== undefined) {
+          if (!isFunc && gl[name] !== value) {
+            warn(name, gl[name], value, key);
+          }
+        } else {
+          if (isFunc) {
+            gl[name] = function (origFn) {
+              return function () {
+                return origFn.apply(ext, arguments);
+              };
+            }(value);
+          } else {
+            gl[name] = value;
+            enums[name] = value;
+          }
+        }
+      } // pass the modified enums to glEnumToString
+
+
+      enums.constructor = {
+        name: ext.constructor.name
+      };
+      glEnumToString(enums, 0);
+    }
+
+    return ext;
+  }
+  /*
+   * If you're wondering why the code doesn't just iterate
+   * over all extensions using `gl.getExtensions` is that it's possible
+   * some future extension is incompatible with this code. Rather than
+   * have thing suddenly break it seems better to manually add to this
+   * list.
+   *
+   */
+
+
+  const supportedExtensions = ['ANGLE_instanced_arrays', 'EXT_blend_minmax', 'EXT_color_buffer_float', 'EXT_color_buffer_half_float', 'EXT_disjoint_timer_query', 'EXT_disjoint_timer_query_webgl2', 'EXT_frag_depth', 'EXT_sRGB', 'EXT_shader_texture_lod', 'EXT_texture_filter_anisotropic', 'OES_element_index_uint', 'OES_standard_derivatives', 'OES_texture_float', 'OES_texture_float_linear', 'OES_texture_half_float', 'OES_texture_half_float_linear', 'OES_vertex_array_object', 'WEBGL_color_buffer_float', 'WEBGL_compressed_texture_atc', 'WEBGL_compressed_texture_etc1', 'WEBGL_compressed_texture_pvrtc', 'WEBGL_compressed_texture_s3tc', 'WEBGL_compressed_texture_s3tc_srgb', 'WEBGL_depth_texture', 'WEBGL_draw_buffers'];
+  /**
+   * Attempts to enable all of the following extensions
+   * and add their functions and constants to the
+   * `WebGLRenderingContext` using their normal non-extension like names.
+   *
+   *      ANGLE_instanced_arrays
+   *      EXT_blend_minmax
+   *      EXT_color_buffer_float
+   *      EXT_color_buffer_half_float
+   *      EXT_disjoint_timer_query
+   *      EXT_disjoint_timer_query_webgl2
+   *      EXT_frag_depth
+   *      EXT_sRGB
+   *      EXT_shader_texture_lod
+   *      EXT_texture_filter_anisotropic
+   *      OES_element_index_uint
+   *      OES_standard_derivatives
+   *      OES_texture_float
+   *      OES_texture_float_linear
+   *      OES_texture_half_float
+   *      OES_texture_half_float_linear
+   *      OES_vertex_array_object
+   *      WEBGL_color_buffer_float
+   *      WEBGL_compressed_texture_atc
+   *      WEBGL_compressed_texture_etc1
+   *      WEBGL_compressed_texture_pvrtc
+   *      WEBGL_compressed_texture_s3tc
+   *      WEBGL_compressed_texture_s3tc_srgb
+   *      WEBGL_depth_texture
+   *      WEBGL_draw_buffers
+   *
+   * For example if `ANGLE_instanced_arrays` exists then the functions
+   * `drawArraysInstanced`, `drawElementsInstanced`, `vertexAttribDivisor`
+   * and the constant `VERTEX_ATTRIB_ARRAY_DIVISOR` are added to the
+   * `WebGLRenderingContext`.
+   *
+   * Note that if you want to know if the extension exists you should
+   * probably call `gl.getExtension` for each extension. Alternatively
+   * you can check for the existence of the functions or constants that
+   * are expected to be added. For example
+   *
+   *    if (gl.drawBuffers) {
+   *      // Either WEBGL_draw_buffers was enabled OR you're running in WebGL2
+   *      ....
+   *
+   * @param {WebGLRenderingContext} gl A WebGLRenderingContext
+   * @memberOf module:twgl
+   */
+
+  function addExtensionsToContext(gl) {
+    for (let ii = 0; ii < supportedExtensions.length; ++ii) {
+      addExtensionToContext(gl, supportedExtensions[ii]);
+    }
+  }
+  /**
+   * Creates a webgl context.
+   * @param {HTMLCanvasElement} canvas The canvas tag to get
+   *     context from. If one is not passed in one will be
+   *     created.
+   * @return {WebGLRenderingContext} The created context.
+   * @private
+   */
+
+
+  function create3DContext(canvas, opt_attribs) {
+    const names = ["webgl", "experimental-webgl"];
+    let context = null;
+
+    for (let ii = 0; ii < names.length; ++ii) {
+      context = canvas.getContext(names[ii], opt_attribs);
+
+      if (context) {
+        {
+          addExtensionsToContext(context);
+        }
+
+        break;
+      }
+    }
+
+    return context;
+  }
+  /**
+   * Gets a WebGL1 context.
+   *
+   * Note: Will attempt to enable Vertex Array Objects
+   * and add WebGL2 entry points. (unless you first set defaults with
+   * `twgl.setDefaults({enableVertexArrayObjects: false})`;
+   *
+   * @param {HTMLCanvasElement} canvas a canvas element.
+   * @param {WebGLContextAttributes} [opt_attribs] optional webgl context creation attributes
+   * @return {WebGLRenderingContext} The created context.
+   * @memberOf module:twgl
+   */
+
+
+  function getWebGLContext(canvas, opt_attribs) {
+    const gl = create3DContext(canvas, opt_attribs);
+    return gl;
+  }
   /**
    * Resize a canvas to match the size it's displayed.
    * @param {HTMLCanvasElement} canvas The canvas to resize.
@@ -17774,7 +17062,7 @@
         opacity
       } = item.items[i];
       const col = d3Color.color(fill);
-      const positions = [x, y, 0, x + width, y, 0, x, y + height, 0, x, y + height, 0, x + width, y, 0, x + width, y + height, 0];
+      const positions = [0, 0, 0, width, 0, 0, 0, height, 0, 0, height, 0, width, 0, 0, width, height, 0];
       const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, opacity !== null && opacity !== void 0 ? opacity : 1];
       this.objbuffer.push({
         programInfo: this.programInfo,
@@ -17785,7 +17073,9 @@
         }),
         uniforms: {
           fill: fillNormalized,
-          resolution: [this._width, this._height]
+          resolution: [this._width, this._height],
+          center: [x, y],
+          scale: [1, 1]
         }
       });
     }
@@ -17802,6 +17092,21 @@
   };
 
   function draw$7(gl, item) {
+    if (!this._circlegeom) {
+      this._circlegeom = [];
+
+      for (let i = 0, n = this._segments; i < n; i++) {
+        const ang1 = this._angles[i];
+        const ang2 = this._angles[(i + 1) % this._segments];
+        const x1 = Math.cos(ang1);
+        const y1 = Math.sin(ang1);
+        const x2 = Math.cos(ang2);
+        const y2 = Math.sin(ang2);
+
+        this._circlegeom.push(...[x1, y1, 0, 0, 0, 0, x2, y2, 0]);
+      }
+    }
+
     for (let i = 0, n = item.items.length; i < n; i++) {
       const {
         x,
@@ -17810,35 +17115,20 @@
         fill,
         opacity
       } = item.items[i];
-      const rad = size * 0.1;
       const col = d3Color.color(fill);
-      const positions = [];
-
-      for (let i = 0, n = this._segments; i < n; i++) {
-        const ang1 = this._angles[i];
-        const ang2 = this._angles[(i + 1) % this._segments];
-
-        const x1 = Math.cos(ang1) * rad * this._aspect;
-
-        const y1 = Math.sin(ang1) * rad;
-
-        const x2 = Math.cos(ang2) * rad * this._aspect;
-
-        const y2 = Math.sin(ang2) * rad;
-        positions.push(...[x1 + x, y1 + y, 0, x, y, 0, x2 + x, y2 + y, 0]);
-      }
-
       const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, 1];
       this.objbuffer.push({
         programInfo: this.programInfo,
         bufferInfo: createBufferInfoFromArrays(gl, {
           position: {
-            data: positions
+            data: this._circlegeom
           }
         }),
         uniforms: {
           fill: fillNormalized,
-          resolution: [this._width, this._height]
+          resolution: [this._width, this._height],
+          center: [x, y],
+          scale: [size * 0.05, size * 0.05]
         }
       });
     }
@@ -17878,7 +17168,12 @@
   inherits(WebGLRenderer, Renderer, {
     initialize(el, width, height, origin, scaleFactor, options) {
       this._options = options || {};
-      this._canvas = this._options.externalContext ? null : domCanvas(1, 1, this._options.type); // instantiate a small canvas
+      this._canvas = domCanvas(width / window.devicePixelRatio, height / window.devicePixelRatio, this._options.type); // instantiate a small canvas
+
+      this._context = getWebGLContext(this._canvas, {
+        antialias: true,
+        depth: false
+      });
 
       if (el && this._canvas) {
         domClear(el, 0).appendChild(this._canvas);
@@ -17890,12 +17185,19 @@
       return base$1.initialize.call(this, el, width, height, origin, scaleFactor);
     },
 
+    /*
     resize(width, height, origin, scaleFactor) {
-      base$1.resize.call(this, width, height, origin, scaleFactor);
-
-      if (this._canvas) {
+      base.resize.call(this, width, height, origin, scaleFactor);
+       if (this._canvas) {
         // configure canvas size and transform
-        resize(this._canvas, this._width, this._height, this._origin, this._scale, this._options.context);
+        resize(
+          this._canvas,
+          this._width,
+          this._height,
+          this._origin,
+          this._scale,
+          this._options.context
+        );
       } else {
         // external context needs to be scaled and positioned to origin
         const gl = this._options.externalContext;
@@ -17903,19 +17205,19 @@
         gl.scale(this._scale, this._scale);
         gl.translate(this._origin[0], this._origin[1]);
       }
-
-      this._redraw = true;
+       this._redraw = true;
       return this;
     },
-
+    */
     canvas() {
       return this._canvas;
     },
 
     context() {
-      return this._options.externalContext || (this._canvas ? this._canvas.getContext("webgl", {
-        premultipliedAlpha: false
-      }) : null);
+      return this._canvas ? getWebGLContext(this._canvas, {
+        antialias: true,
+        depth: false
+      }) : null;
     },
 
     dirty(item) {
@@ -17938,17 +17240,12 @@
           h = this._height,
           db = this._dirty,
           vb = viewBounds$1(o, w, h);
-      c = domCanvas(w, h, this._options.type);
-      document.body.querySelector("canvas").remove();
-      document.body.append(c);
-      const gl = c.getContext("webgl", {
-        premultipliedAlpha: false
-      });
+      const gl = this.context();
 
       if (gl) {
         const vs =
         /*glsl*/
-        "\n        attribute vec2 position;\n        uniform vec2 resolution;\n        void main() {\n          vec2 pos = position/resolution;\n          pos.y = 1.0-pos.y;\n          pos = pos*2.0-1.0;\n          gl_Position = vec4(pos, 0, 1);\n        }\n    ";
+        "\n        attribute vec2 position;\n        uniform vec2 resolution;\n        uniform vec2 center;\n        uniform vec2 scale;\n\n        void main() {\n          vec2 pos = position * scale;\n          pos += center;\n          pos /= resolution;\n          pos.y = 1.0-pos.y;\n          pos = pos*2.0-1.0;\n          gl_Position = vec4(pos, 0, 1);\n        }\n    ";
         const fs =
         /*glsl*/
         "\n        precision mediump float;\n        uniform vec4 fill;\n        void main() {\n          gl_FragColor = vec4((fill.xyz), fill.w);\n        }\n    ";
@@ -17957,12 +17254,13 @@
         this.draw(gl, scene, vb);
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        resizeCanvasToDisplaySize(c);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        resizeCanvasToDisplaySize(c, window.devicePixelRatio || 1);
         gl.viewport(0, 0, w, h);
         gl.useProgram(programInfo.program);
         drawObjectList(gl, this.objbuffer);
       } else {
-        console.log("No canvas");
+        console.log("Failed to construct WebGL instance.");
       }
 
       return this;
@@ -22644,7 +21942,7 @@
     return Math.round((Math.sqrt(4 * v * v + 1) - 1) / 2);
   }
 
-  function number$3(_) {
+  function number$1(_) {
     return isFunction(_) ? _ : constant(+_);
   } // Implementation adapted from d3/d3-contour. Thanks!
 
@@ -22722,15 +22020,15 @@
     }
 
     density.x = function (_) {
-      return arguments.length ? (x = number$3(_), density) : x;
+      return arguments.length ? (x = number$1(_), density) : x;
     };
 
     density.y = function (_) {
-      return arguments.length ? (y = number$3(_), density) : y;
+      return arguments.length ? (y = number$1(_), density) : y;
     };
 
     density.weight = function (_) {
-      return arguments.length ? (weight = number$3(_), density) : weight;
+      return arguments.length ? (weight = number$1(_), density) : weight;
     };
 
     density.size = function (_) {
@@ -29263,7 +28561,7 @@
     return locale[method](spec)(value);
   };
 
-  const format$3 = wrap('format');
+  const format$2 = wrap('format');
   const timeFormat = wrap('timeFormat');
   const utcFormat = wrap('utcFormat');
   const timeParse = wrap('timeParse');
@@ -29416,7 +28714,7 @@
     return args[args.length - 1];
   }
 
-  function warn() {
+  function warn$1() {
     return log$3(this.context.dataflow, 'warn', arguments);
   }
 
@@ -29590,7 +28888,7 @@
     return s && s.bandwidth ? s.bandwidth() : 0;
   }
 
-  function copy$1(name, group) {
+  function copy(name, group) {
     const s = getScale(name, (group || this).context);
     return s ? s.copy() : undefined;
   }
@@ -29775,7 +29073,7 @@
     luminance,
     contrast,
     sequence: d3Array.range,
-    format: format$3,
+    format: format$2,
     utcFormat,
     utcParse,
     utcOffset,
@@ -29795,7 +29093,7 @@
     utcweek,
     dayofyear,
     utcdayofyear,
-    warn,
+    warn: warn$1,
     info,
     debug,
     extent,
@@ -29872,7 +29170,7 @@
 
 
   expressionFunction('bandwidth', bandwidth, scaleVisitor);
-  expressionFunction('copy', copy$1, scaleVisitor);
+  expressionFunction('copy', copy, scaleVisitor);
   expressionFunction('domain', domain, scaleVisitor);
   expressionFunction('range', range, scaleVisitor);
   expressionFunction('invert', invert, scaleVisitor);
@@ -31340,7 +30638,7 @@
     return el;
   }
 
-  const number$4 = _ => +_ || 0;
+  const number$2 = _ => +_ || 0;
 
   const paddingObject = _ => ({
     top: _,
@@ -31351,11 +30649,11 @@
 
   function padding(_) {
     return isObject(_) ? {
-      top: number$4(_.top),
-      bottom: number$4(_.bottom),
-      left: number$4(_.left),
-      right: number$4(_.right)
-    } : paddingObject(number$4(_));
+      top: number$2(_.top),
+      bottom: number$2(_.bottom),
+      left: number$2(_.left),
+      right: number$2(_.right)
+    } : paddingObject(number$2(_));
   }
   /**
    * Render the current scene in a headless fashion.
@@ -32202,7 +31500,7 @@
     };
   }
 
-  const number$5 = _ => +_ || 0;
+  const number$3 = _ => +_ || 0;
 
   const paddingObject$1 = _ => ({
     top: _,
@@ -32212,11 +31510,11 @@
   });
 
   function parsePadding(spec) {
-    return !isObject(spec) ? paddingObject$1(number$5(spec)) : spec.signal ? spec : {
-      top: number$5(spec.top),
-      bottom: number$5(spec.bottom),
-      left: number$5(spec.left),
-      right: number$5(spec.right)
+    return !isObject(spec) ? paddingObject$1(number$3(spec)) : spec.signal ? spec : {
+      top: number$3(spec.top),
+      bottom: number$3(spec.bottom),
+      left: number$3(spec.left),
+      right: number$3(spec.right)
     };
   }
 
@@ -33186,10 +32484,10 @@
     style: 1,
     interactive: 1
   };
-  const zero$2 = {
+  const zero$1 = {
     value: 0
   };
-  const one$2 = {
+  const one$1 = {
     value: 1
   };
   const GroupMark = 'group';
@@ -33320,14 +32618,14 @@
 
     const encode = {
       enter: enter = {
-        opacity: zero$2,
-        x: zero$2,
-        y: zero$2,
+        opacity: zero$1,
+        x: zero$1,
+        y: zero$1,
         width: encoder(width),
         height: encoder(height)
       },
       update: extend({}, enter, {
-        opacity: one$2,
+        opacity: one$1,
         fill: {
           gradient: scale,
           start: start,
@@ -33335,7 +32633,7 @@
         }
       }),
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     addEncoders(encode, {
@@ -33365,7 +32663,7 @@
         adjust = '';
     vertical ? (u = 'y', uu = 'y2', v = 'x', vv = 'width', adjust = '1-') : (u = 'x', uu = 'x2', v = 'y', vv = 'height');
     const enter = {
-      opacity: zero$2,
+      opacity: zero$1,
       fill: {
         scale: scale,
         field: Value
@@ -33375,7 +32673,7 @@
       signal: adjust + 'datum.' + Perc,
       mult: length
     };
-    enter[v] = zero$2;
+    enter[v] = zero$1;
     enter[uu] = {
       signal: adjust + 'datum.' + Perc2,
       mult: length
@@ -33384,10 +32682,10 @@
     const encode = {
       enter: enter,
       update: extend({}, enter, {
-        opacity: one$2
+        opacity: one$1
       }),
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     addEncoders(encode, {
@@ -33424,16 +32722,16 @@
 
     const encode = {
       enter: enter = {
-        opacity: zero$2
+        opacity: zero$1
       },
       update: update = {
-        opacity: one$2,
+        opacity: one$1,
         text: {
           field: Label$1
         }
       },
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     addEncoders(encode, {
@@ -33512,7 +32810,7 @@
 
     encode = {
       enter: enter = {
-        opacity: zero$2,
+        opacity: zero$1,
         x: {
           signal: xSignal,
           mult: 0.5,
@@ -33521,12 +32819,12 @@
         y: yEncode
       },
       update: update = {
-        opacity: one$2,
+        opacity: one$1,
         x: enter.x,
         y: enter.y
       },
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     let baseFill = null,
@@ -33570,7 +32868,7 @@
     labelOffset.offset = _('labelOffset');
     encode = {
       enter: enter = {
-        opacity: zero$2,
+        opacity: zero$1,
         x: {
           signal: xSignal,
           offset: labelOffset
@@ -33578,7 +32876,7 @@
         y: yEncode
       },
       update: update = {
-        opacity: one$2,
+        opacity: one$1,
         text: {
           field: Label$1
         },
@@ -33586,7 +32884,7 @@
         y: enter.y
       },
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     addEncoders(encode, {
@@ -33615,15 +32913,15 @@
           value: !height
         },
         // ignore width/height in bounds calc
-        width: zero$2,
-        height: height ? encoder(height) : zero$2,
-        opacity: zero$2
+        width: zero$1,
+        height: height ? encoder(height) : zero$1,
+        opacity: zero$1
       },
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       },
       update: update = {
-        opacity: one$2,
+        opacity: one$1,
         row: {
           signal: null
         },
@@ -33703,10 +33001,10 @@
 
     const encode = {
       enter: {
-        opacity: zero$2
+        opacity: zero$1
       },
       update: {
-        opacity: one$2,
+        opacity: one$1,
         x: {
           field: {
             group: 'padding'
@@ -33719,7 +33017,7 @@
         }
       },
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     addEncoders(encode, {
@@ -34985,13 +34283,13 @@
     let enter, update;
     const encode = {
       enter: enter = {
-        opacity: zero$2
+        opacity: zero$1
       },
       update: update = {
-        opacity: one$2
+        opacity: one$1
       },
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     addEncoders(encode, {
@@ -35004,9 +34302,9 @@
     });
     const pos0 = position(spec, 0);
     const pos1 = position(spec, 1);
-    enter.x = update.x = ifX(orient, pos0, zero$2);
+    enter.x = update.x = ifX(orient, pos0, zero$1);
     enter.x2 = update.x2 = ifX(orient, pos1);
-    enter.y = update.y = ifY(orient, pos0, zero$2);
+    enter.y = update.y = ifY(orient, pos0, zero$1);
     enter.y2 = update.y2 = ifY(orient, pos1);
     return guideMark({
       type: RuleMark,
@@ -35033,13 +34331,13 @@
     let enter, exit, update;
     const encode = {
       enter: enter = {
-        opacity: zero$2
+        opacity: zero$1
       },
       update: update = {
-        opacity: one$2
+        opacity: one$1
       },
       exit: exit = {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     addEncoders(encode, {
@@ -35129,13 +34427,13 @@
     let enter, exit, update;
     const encode = {
       enter: enter = {
-        opacity: zero$2
+        opacity: zero$1
       },
       update: update = {
-        opacity: one$2
+        opacity: one$1
       },
       exit: exit = {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     addEncoders(encode, {
@@ -35156,10 +34454,10 @@
       offset: band.offset,
       round: _('tickRound')
     };
-    update.y = enter.y = ifX(orient, zero$2, tickPos);
+    update.y = enter.y = ifX(orient, zero$1, tickPos);
     update.y2 = enter.y2 = ifX(orient, tickSize);
     exit.x = ifX(orient, tickPos);
-    update.x = enter.x = ifY(orient, zero$2, tickPos);
+    update.x = enter.x = ifY(orient, zero$1, tickPos);
     update.x2 = enter.x2 = ifY(orient, tickSize);
     exit.y = ifY(orient, tickPos);
     return guideMark({
@@ -35208,14 +34506,14 @@
     const offsetExpr = flushExpr(scale, flush, "-(".concat(flushOffset, ")"), flushOffset, 0);
     flushOn = flushOn && flushOffset;
     const enter = {
-      opacity: zero$2,
+      opacity: zero$1,
       x: ifX(orient, tickPos, tickSize),
       y: ifY(orient, tickPos, tickSize)
     };
     const encode = {
       enter: enter,
       update: update = {
-        opacity: one$2,
+        opacity: one$1,
         text: {
           field: Label$1
         },
@@ -35225,7 +34523,7 @@
         baseline
       },
       exit: {
-        opacity: zero$2,
+        opacity: zero$1,
         x: enter.x,
         y: enter.y
       }
@@ -35292,18 +34590,18 @@
     let enter, update;
     const encode = {
       enter: enter = {
-        opacity: zero$2,
+        opacity: zero$1,
         anchor: encoder(_('titleAnchor', null)),
         align: {
           signal: alignExpr
         }
       },
       update: update = extend({}, enter, {
-        opacity: one$2,
+        opacity: one$1,
         text: encoder(spec.title)
       }),
       exit: {
-        opacity: zero$2
+        opacity: zero$1
       }
     };
     const titlePos = {
@@ -35311,7 +34609,7 @@
     };
     update.x = ifX(orient, titlePos);
     update.y = ifY(orient, titlePos);
-    enter.angle = ifX(orient, zero$2, mult(sign, 90));
+    enter.angle = ifX(orient, zero$1, mult(sign, 90));
     enter.baseline = ifX(orient, ifTop(orient, Bottom$1, Top$1), {
       value: Bottom$1
     });

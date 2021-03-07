@@ -6,28 +6,28 @@ function draw(gl, item) {
     const { x, y, width, height, fill, opacity } = item.items[i];
     const col = color(fill);
     const positions = [
-      x,
-      y,
+      0,
+      0,
       0,
 
-      x + width,
-      y,
+      width,
+      0,
       0,
 
-      x,
-      y + height,
+      0,
+      height,
       0,
 
-      x,
-      y + height,
+      0,
+      height,
       0,
 
-      x + width,
-      y,
+      width,
+      0,
       0,
 
-      x + width,
-      y + height,
+      width,
+      height,
       0,
     ];
     const fillNormalized = [
@@ -46,6 +46,8 @@ function draw(gl, item) {
       uniforms: {
         fill: fillNormalized,
         resolution: [this._width, this._height],
+        center: [x, y],
+        scale: [1, 1],
       },
     });
   }
