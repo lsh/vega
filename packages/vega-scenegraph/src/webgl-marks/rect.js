@@ -2,54 +2,19 @@ import { color } from "d3-color";
 import { createBufferInfoFromArrays } from "twgl.js/dist/4.x/twgl-full.module.js";
 
 function draw(gl, item) {
-  for (let i = 0; i < item.items.length; i++) {
-    const { x, y, width, height, fill, opacity } = item.items[i];
+  if (!this._positions) {
+    this._positions = [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0];
+  }
+  this._itemCount = item.items.length;
+  this._centers = [];
+  this._scales = [];
+  this._colors = [];
+  for (let i = 0; i < this._itemCount; i++) {
+    const { x, y, width, height, fill, fillOpacity } = item.items[i];
+    this._centers.push(x, y);
     const col = color(fill);
-    const positions = [
-      0,
-      0,
-      0,
-
-      width,
-      0,
-      0,
-
-      0,
-      height,
-      0,
-
-      0,
-      height,
-      0,
-
-      width,
-      0,
-      0,
-
-      width,
-      height,
-      0,
-    ];
-    const fillNormalized = [
-      col.r / 255,
-      col.g / 255,
-      col.b / 255,
-      opacity ?? 1,
-    ];
-    this.objbuffer.push({
-      programInfo: this.programInfo,
-      bufferInfo: createBufferInfoFromArrays(gl, {
-        position: {
-          data: positions,
-        },
-      }),
-      uniforms: {
-        fill: fillNormalized,
-        resolution: [this._width, this._height],
-        center: [x, y],
-        scale: [1, 1],
-      },
-    });
+    this._colors.push(col.r / 255, col.g / 255, col.b / 255, fillOpacity);
+    this._scales.push(width, height);
   }
 }
 

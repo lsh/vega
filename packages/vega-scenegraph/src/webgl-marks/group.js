@@ -2,12 +2,7 @@ import { visit } from "../util/visit";
 import { scaleLinear } from "d3-scale";
 
 function draw(gl, scene, bounds) {
-  this.objbuffer = [];
   this._aspect = this._height / this._width;
-  this._segments = 36;
-  this._angles = Array.from({ length: this._segments }, (_, i) =>
-    !i ? 0 : ((Math.PI * 2.0) / this._segments) * i
-  );
 
   visit(scene, (group) => {
     const gx = group.x || 0,
@@ -18,6 +13,12 @@ function draw(gl, scene, bounds) {
       this.draw(gl, item, bounds);
     });
   });
+  this._buffer = {
+    position: { data: this._positions },
+    center: { data: this._centers, numComponents: 2, divisor: 1 },
+    scale: { data: this._scales, numComponents: 2, divisor: 1 },
+    color: { data: this._colors, numComponents: 4, divisor: 1 },
+  };
 }
 
 export default {

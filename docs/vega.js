@@ -20068,12 +20068,7 @@
   });
 
   function draw$5(gl, scene, bounds) {
-    this.objbuffer = [];
     this._aspect = this._height / this._width;
-    this._segments = 36;
-    this._angles = Array.from({
-      length: this._segments
-    }, (_, i) => !i ? 0 : Math.PI * 2.0 / this._segments * i);
     visit(scene, group => {
       const gx = group.x || 0,
             gy = group.y || 0,
@@ -20083,6 +20078,26 @@
         this.draw(gl, item, bounds);
       });
     });
+    this._buffer = {
+      position: {
+        data: this._positions
+      },
+      center: {
+        data: this._centers,
+        numComponents: 2,
+        divisor: 1
+      },
+      scale: {
+        data: this._scales,
+        numComponents: 2,
+        divisor: 1
+      },
+      color: {
+        data: this._colors,
+        numComponents: 4,
+        divisor: 1
+      }
+    };
   }
 
   var group$1 = {
@@ -22686,92 +22701,70 @@
     }
   }
   /**
-   * A DrawObject is useful for putting objects in to an array and passing them to {@link module:twgl.drawObjectList}.
-   *
-   * You need either a `BufferInfo` or a `VertexArrayInfo`.
-   *
-   * @typedef {Object} DrawObject
-   * @property {boolean} [active] whether or not to draw. Default = `true` (must be `false` to be not true). In other words `undefined` = `true`
-   * @property {number} [type] type to draw eg. `gl.TRIANGLES`, `gl.LINES`, etc...
-   * @property {module:twgl.ProgramInfo} programInfo A ProgramInfo as returned from {@link module:twgl.createProgramInfo}
-   * @property {module:twgl.BufferInfo} [bufferInfo] A BufferInfo as returned from {@link module:twgl.createBufferInfoFromArrays}
-   * @property {module:twgl.VertexArrayInfo} [vertexArrayInfo] A VertexArrayInfo as returned from {@link module:twgl.createVertexArrayInfo}
-   * @property {Object<string, ?>} uniforms The values for the uniforms.
-   *   You can pass multiple objects by putting them in an array. For example
-   *
-   *     var sharedUniforms = {
-   *       u_fogNear: 10,
-   *       u_projection: ...
-   *       ...
-   *     };
-   *
-   *     var localUniforms = {
-   *       u_world: ...
-   *       u_diffuseColor: ...
-   *     };
-   *
-   *     var drawObj = {
-   *       ...
-   *       uniforms: [sharedUniforms, localUniforms],
-   *     };
-   *
-   * @property {number} [offset] the offset to pass to `gl.drawArrays` or `gl.drawElements`. Defaults to 0.
-   * @property {number} [count] the count to pass to `gl.drawArrays` or `gl.drawElements`. Defaults to bufferInfo.numElements.
-   * @property {number} [instanceCount] the number of instances. Defaults to undefined.
+   * @typedef {Object} VertexArrayInfo
+   * @property {number} numElements The number of elements to pass to `gl.drawArrays` or `gl.drawElements`.
+   * @property {number} [elementType] The type of indices `UNSIGNED_BYTE`, `UNSIGNED_SHORT` etc..
+   * @property {WebGLVertexArrayObject} [vertexArrayObject] a vertex array object
    * @memberOf module:twgl
    */
 
   /**
-   * Draws a list of objects
+   * Creates a VertexArrayInfo from a BufferInfo and one or more ProgramInfos
+   *
+   * This can be passed to {@link module:twgl.setBuffersAndAttributes} and to
+   * {@link module:twgl:drawBufferInfo}.
+   *
+   * > **IMPORTANT:** Vertex Array Objects are **not** a direct analog for a BufferInfo. Vertex Array Objects
+   *   assign buffers to specific attributes at creation time. That means they can only be used with programs
+   *   who's attributes use the same attribute locations for the same purposes.
+   *
+   * > Bind your attribute locations by passing an array of attribute names to {@link module:twgl.createProgramInfo}
+   *   or use WebGL 2's GLSL ES 3's `layout(location = <num>)` to make sure locations match.
+   *
+   * also
+   *
+   * > **IMPORTANT:** After calling twgl.setBuffersAndAttribute with a BufferInfo that uses a Vertex Array Object
+   *   that Vertex Array Object will be bound. That means **ANY MANIPULATION OF ELEMENT_ARRAY_BUFFER or ATTRIBUTES**
+   *   will affect the Vertex Array Object state.
+   *
+   * > Call `gl.bindVertexArray(null)` to get back manipulating the global attributes and ELEMENT_ARRAY_BUFFER.
+   *
    * @param {WebGLRenderingContext} gl A WebGLRenderingContext
-   * @param {DrawObject[]} objectsToDraw an array of objects to draw.
-   * @memberOf module:twgl/draw
+   * @param {module:twgl.ProgramInfo|module:twgl.ProgramInfo[]} programInfo a programInfo or array of programInfos
+   * @param {module:twgl.BufferInfo} bufferInfo BufferInfo as returned from createBufferInfoFromArrays etc...
+   *
+   *    You need to make sure every attribute that will be used is bound. So for example assume shader 1
+   *    uses attributes A, B, C and shader 2 uses attributes A, B, D. If you only pass in the programInfo
+   *    for shader 1 then only attributes A, B, and C will have their attributes set because TWGL doesn't
+   *    now attribute D's location.
+   *
+   *    So, you can pass in both shader 1 and shader 2's programInfo
+   *
+   * @return {module:twgl.VertexArrayInfo} The created VertexArrayInfo
+   *
+   * @memberOf module:twgl/vertexArrays
    */
 
 
-  function drawObjectList(gl, objectsToDraw) {
-    let lastUsedProgramInfo = null;
-    let lastUsedBufferInfo = null;
-    objectsToDraw.forEach(function (object) {
-      if (object.active === false) {
-        return;
-      }
+  function createVertexArrayInfo(gl, programInfos, bufferInfo) {
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
 
-      const programInfo = object.programInfo;
-      const bufferInfo = object.vertexArrayInfo || object.bufferInfo;
-      let bindBuffers = false;
-      const type = object.type === undefined ? TRIANGLES : object.type;
-
-      if (programInfo !== lastUsedProgramInfo) {
-        lastUsedProgramInfo = programInfo;
-        gl.useProgram(programInfo.program); // We have to rebind buffers when changing programs because we
-        // only bind buffers the program uses. So if 2 programs use the same
-        // bufferInfo but the 1st one uses only positions the when the
-        // we switch to the 2nd one some of the attributes will not be on.
-
-        bindBuffers = true;
-      } // Setup all the needed attributes.
-
-
-      if (bindBuffers || bufferInfo !== lastUsedBufferInfo) {
-        if (lastUsedBufferInfo && lastUsedBufferInfo.vertexArrayObject && !bufferInfo.vertexArrayObject) {
-          gl.bindVertexArray(null);
-        }
-
-        lastUsedBufferInfo = bufferInfo;
-        setBuffersAndAttributes(gl, programInfo, bufferInfo);
-      } // Set the uniforms.
-
-
-      setUniforms(programInfo, object.uniforms); // Draw
-
-      drawBufferInfo(gl, bufferInfo, type, object.count, object.offset, object.instanceCount);
-    });
-
-    if (lastUsedBufferInfo && lastUsedBufferInfo.vertexArrayObject) {
-      gl.bindVertexArray(null);
+    if (!programInfos.length) {
+      programInfos = [programInfos];
     }
+
+    programInfos.forEach(function (programInfo) {
+      setBuffersAndAttributes(gl, programInfo, bufferInfo);
+    });
+    gl.bindVertexArray(null);
+    return {
+      numElements: bufferInfo.numElements,
+      elementType: bufferInfo.elementType,
+      vertexArrayObject: vao
+    };
   }
+
   const prefixRE = /^(.*?)_/;
 
   function addExtensionToContext(gl, extensionName) {
@@ -22887,52 +22880,6 @@
     }
   }
   /**
-   * Creates a webgl context.
-   * @param {HTMLCanvasElement} canvas The canvas tag to get
-   *     context from. If one is not passed in one will be
-   *     created.
-   * @return {WebGLRenderingContext} The created context.
-   * @private
-   */
-
-
-  function create3DContext(canvas, opt_attribs) {
-    const names = ["webgl", "experimental-webgl"];
-    let context = null;
-
-    for (let ii = 0; ii < names.length; ++ii) {
-      context = canvas.getContext(names[ii], opt_attribs);
-
-      if (context) {
-        {
-          addExtensionsToContext(context);
-        }
-
-        break;
-      }
-    }
-
-    return context;
-  }
-  /**
-   * Gets a WebGL1 context.
-   *
-   * Note: Will attempt to enable Vertex Array Objects
-   * and add WebGL2 entry points. (unless you first set defaults with
-   * `twgl.setDefaults({enableVertexArrayObjects: false})`;
-   *
-   * @param {HTMLCanvasElement} canvas a canvas element.
-   * @param {WebGLContextAttributes} [opt_attribs] optional webgl context creation attributes
-   * @return {WebGLRenderingContext} The created context.
-   * @memberOf module:twgl
-   */
-
-
-  function getWebGLContext(canvas, opt_attribs) {
-    const gl = create3DContext(canvas, opt_attribs);
-    return gl;
-  }
-  /**
    * Resize a canvas to match the size it's displayed.
    * @param {HTMLCanvasElement} canvas The canvas to resize.
    * @param {number} [multiplier] So you can pass in `window.devicePixelRatio` or other scale value if you want to.
@@ -22957,32 +22904,32 @@
   }
 
   function draw$6(gl, item) {
-    for (let i = 0; i < item.items.length; i++) {
+    if (!this._positions) {
+      this._positions = [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0];
+    }
+
+    this._itemCount = item.items.length;
+    this._centers = [];
+    this._scales = [];
+    this._colors = [];
+
+    for (let i = 0; i < this._itemCount; i++) {
       const {
         x,
         y,
         width,
         height,
         fill,
-        opacity
+        fillOpacity
       } = item.items[i];
+
+      this._centers.push(x, y);
+
       const col = color(fill);
-      const positions = [0, 0, 0, width, 0, 0, 0, height, 0, 0, height, 0, width, 0, 0, width, height, 0];
-      const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, opacity !== null && opacity !== void 0 ? opacity : 1];
-      this.objbuffer.push({
-        programInfo: this.programInfo,
-        bufferInfo: createBufferInfoFromArrays(gl, {
-          position: {
-            data: positions
-          }
-        }),
-        uniforms: {
-          fill: fillNormalized,
-          resolution: [this._width, this._height],
-          center: [x, y],
-          scale: [1, 1]
-        }
-      });
+
+      this._colors.push(col.r / 255, col.g / 255, col.b / 255, fillOpacity);
+
+      this._scales.push(width, height);
     }
   }
 
@@ -22997,20 +22944,29 @@
   };
 
   function draw$7(gl, item) {
-    if (!this._circlegeom) {
-      this._circlegeom = [];
+    if (!this._positions) {
+      this._segments = 32;
+      this._angles = Array.from({
+        length: this._segments
+      }, (_, i) => !i ? 0 : Math.PI * 2.0 / this._segments * i);
+      this._positions = [];
 
       for (let i = 0, n = this._segments; i < n; i++) {
         const ang1 = this._angles[i];
         const ang2 = this._angles[(i + 1) % this._segments];
-        const x1 = Math.cos(ang1);
-        const y1 = Math.sin(ang1);
-        const x2 = Math.cos(ang2);
-        const y2 = Math.sin(ang2);
+        const x1 = Math.cos(ang1) * 0.5;
+        const y1 = Math.sin(ang1) * 0.5;
+        const x2 = Math.cos(ang2) * 0.5;
+        const y2 = Math.sin(ang2) * 0.5;
 
-        this._circlegeom.push(...[x1, y1, 0, 0, 0, 0, x2, y2, 0]);
+        this._positions.push(x1, y1, 0, 0, 0, 0, x2, y2, 0);
       }
     }
+
+    this._itemCount = item.items.length;
+    this._centers = [];
+    this._scales = [];
+    this._colors = [];
 
     for (let i = 0, n = item.items.length; i < n; i++) {
       const {
@@ -23018,24 +22974,16 @@
         y,
         size,
         fill,
-        opacity
+        fillOpacity
       } = item.items[i];
+
+      this._centers.push(x, y);
+
       const col = color(fill);
-      const fillNormalized = [col.r / 255, col.g / 255, col.b / 255, 1];
-      this.objbuffer.push({
-        programInfo: this.programInfo,
-        bufferInfo: createBufferInfoFromArrays(gl, {
-          position: {
-            data: this._circlegeom
-          }
-        }),
-        uniforms: {
-          fill: fillNormalized,
-          resolution: [this._width, this._height],
-          center: [x, y],
-          scale: [size * 0.05, size * 0.05]
-        }
-      });
+
+      this._colors.push(col.r / 255, col.g / 255, col.b / 255, fillOpacity);
+
+      this._scales.push(size, size);
     }
   }
 
@@ -23058,6 +23006,26 @@
     symbol: symbol$2
   };
 
+  function devicePixelRatio$1() {
+    return typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  }
+
+  const pixelRatio$1 = devicePixelRatio$1();
+
+  function resize$1(canvas, width, height, origin, scaleFactor, opt) {
+    const inDOM = typeof HTMLElement !== "undefined" && canvas instanceof HTMLElement && canvas.parentNode != null,
+          ratio = inDOM ? pixelRatio$1 : scaleFactor;
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+
+    if (inDOM && ratio !== 1) {
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+    }
+
+    return canvas;
+  }
+
   function WebGLRenderer(loader) {
     Renderer.call(this, loader);
     this._options = {};
@@ -23073,11 +23041,12 @@
   inherits(WebGLRenderer, Renderer, {
     initialize(el, width, height, origin, scaleFactor, options) {
       this._options = options || {};
-      this._canvas = domCanvas(width / window.devicePixelRatio, height / window.devicePixelRatio, this._options.type); // instantiate a small canvas
+      this._canvas = domCanvas(1, 1, this._options.type); // instantiate a small canvas
 
-      this._context = getWebGLContext(this._canvas, {
-        antialias: true,
-        depth: false
+      this._context = this._canvas.getContext("webgl", {
+        alpha: false,
+        depth: false,
+        antialias: true
       });
 
       if (el && this._canvas) {
@@ -23090,19 +23059,12 @@
       return base$1.initialize.call(this, el, width, height, origin, scaleFactor);
     },
 
-    /*
     resize(width, height, origin, scaleFactor) {
-      base.resize.call(this, width, height, origin, scaleFactor);
-       if (this._canvas) {
+      base$1.resize.call(this, width, height, origin, scaleFactor);
+
+      if (this._canvas) {
         // configure canvas size and transform
-        resize(
-          this._canvas,
-          this._width,
-          this._height,
-          this._origin,
-          this._scale,
-          this._options.context
-        );
+        resize$1(this._canvas, this._width, this._height, this._origin, this._scale, this._options.context);
       } else {
         // external context needs to be scaled and positioned to origin
         const gl = this._options.externalContext;
@@ -23110,18 +23072,20 @@
         gl.scale(this._scale, this._scale);
         gl.translate(this._origin[0], this._origin[1]);
       }
-       this._redraw = true;
+
+      this._redraw = true;
       return this;
     },
-    */
+
     canvas() {
       return this._canvas;
     },
 
     context() {
-      return this._canvas ? getWebGLContext(this._canvas, {
-        antialias: true,
-        depth: false
+      return this._canvas ? this._canvas.getContext("webgl", {
+        alpha: false,
+        depth: false,
+        antialias: true
       }) : null;
     },
 
@@ -23148,24 +23112,35 @@
       const gl = this.context();
 
       if (gl) {
+        addExtensionsToContext(gl);
         const vs =
         /*glsl*/
-        "\n        attribute vec2 position;\n        uniform vec2 resolution;\n        uniform vec2 center;\n        uniform vec2 scale;\n\n        void main() {\n          vec2 pos = position * scale;\n          pos += center;\n          pos /= resolution;\n          pos.y = 1.0-pos.y;\n          pos = pos*2.0-1.0;\n          gl_Position = vec4(pos, 0, 1);\n        }\n    ";
+        "\n        attribute vec2 position;\n        attribute vec2 center;\n        attribute vec2 scale;\n        attribute vec4 color;\n        uniform vec2 resolution;\n        varying vec4 fill;\n\n        void main() {\n          fill = color;\n          vec2 pos = position * scale;\n          pos += center;\n          pos /= resolution;\n          pos.y = 1.0-pos.y;\n          pos = pos*2.0-1.0;\n          gl_Position = vec4(pos, 0, 1);\n        }\n    ";
         const fs =
         /*glsl*/
-        "\n        precision mediump float;\n        uniform vec4 fill;\n        void main() {\n          gl_FragColor = vec4((fill.xyz), fill.w);\n        }\n    ";
+        "\n        precision mediump float;\n        varying vec4 fill;\n        void main() {\n          gl_FragColor = vec4((fill.xyz), 0.5);\n        }\n    ";
         const programInfo = createProgramInfo(gl, [vs, fs]);
         this.programInfo = programInfo;
         this.draw(gl, scene, vb);
+        const bufferInfo = createBufferInfoFromArrays(gl, this._buffer);
+        const vertexInfo = createVertexArrayInfo(gl, programInfo, bufferInfo);
+        const uniforms = {
+          resolution: [w, h]
+        };
+        resizeCanvasToDisplaySize(gl.canvas, 1);
+        gl.viewport(0, 0, w, h); // setup blending so that all the points aren't opaque
+
         gl.enable(gl.BLEND);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        resizeCanvasToDisplaySize(c, window.devicePixelRatio || 1);
-        gl.viewport(0, 0, w, h);
+        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.clearColor(1, 1, 1, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.useProgram(programInfo.program);
-        drawObjectList(gl, this.objbuffer);
+        setBuffersAndAttributes(gl, programInfo, vertexInfo);
+        setUniforms(programInfo, uniforms);
+        drawBufferInfo(gl, vertexInfo, gl.TRIANGLES, vertexInfo.numElements, 0, this._itemCount);
       } else {
-        console.log("Failed to construct WebGL instance.");
+        error("Failed to construct WebGL instance.");
       }
 
       return this;

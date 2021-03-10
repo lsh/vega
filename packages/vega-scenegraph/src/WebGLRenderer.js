@@ -4,14 +4,18 @@ import marks from "./webgl-marks/index";
 
 import { domClear } from "./util/dom";
 import clip from "./util/canvas/clip";
-import resize from "./util/canvas/resize";
+import resize from "./util/canvas/resize-webgl";
 import { canvas } from "vega-canvas";
 import { error, inherits } from "vega-util";
 import {
+  addExtensionsToContext,
   createProgramInfo,
+  createVertexArrayInfo,
+  createBufferInfoFromArrays,
   resizeCanvasToDisplaySize,
-  drawObjectList,
-  getWebGLContext,
+  setBuffersAndAttributes,
+  setUniforms,
+  drawBufferInfo,
 } from "twgl.js/dist/4.x/twgl-full.module.js";
 
 export default function WebGLRenderer(loader) {
@@ -31,16 +35,12 @@ inherits(WebGLRenderer, Renderer, {
   initialize(el, width, height, origin, scaleFactor, options) {
     this._options = options || {};
 
-    this._canvas = canvas(
-      width / window.devicePixelRatio,
-      height / window.devicePixelRatio,
-      this._options.type
-    ); // instantiate a small canvas
-    this._context = getWebGLContext(this._canvas, {
-      antialias: true,
+    this._canvas = canvas(1, 1, this._options.type); // instantiate a small canvas
+    this._context = this._canvas.getContext("webgl", {
+      alpha: false,
       depth: false,
+      antialias: true,
     });
-
     if (el && this._canvas) {
       domClear(el, 0).appendChild(this._canvas);
       this._canvas.setAttribute("class", "marks");
@@ -50,7 +50,6 @@ inherits(WebGLRenderer, Renderer, {
     return base.initialize.call(this, el, width, height, origin, scaleFactor);
   },
 
-  /*
   resize(width, height, origin, scaleFactor) {
     base.resize.call(this, width, height, origin, scaleFactor);
 
@@ -75,7 +74,6 @@ inherits(WebGLRenderer, Renderer, {
     this._redraw = true;
     return this;
   },
-  */
 
   canvas() {
     return this._canvas;
@@ -83,7 +81,11 @@ inherits(WebGLRenderer, Renderer, {
 
   context() {
     return this._canvas
-      ? getWebGLContext(this._canvas, { antialias: true, depth: false })
+      ? this._canvas.getContext("webgl", {
+          alpha: false,
+          depth: false,
+          antialias: true,
+        })
       : null;
   },
 
@@ -110,13 +112,18 @@ inherits(WebGLRenderer, Renderer, {
     const gl = this.context();
 
     if (gl) {
+      addExtensionsToContext(gl);
+
       const vs = /*glsl*/ `
         attribute vec2 position;
+        attribute vec2 center;
+        attribute vec2 scale;
+        attribute vec4 color;
         uniform vec2 resolution;
-        uniform vec2 center;
-        uniform vec2 scale;
+        varying vec4 fill;
 
         void main() {
+          fill = color;
           vec2 pos = position * scale;
           pos += center;
           pos /= resolution;
@@ -128,27 +135,50 @@ inherits(WebGLRenderer, Renderer, {
 
       const fs = /*glsl*/ `
         precision mediump float;
-        uniform vec4 fill;
+        varying vec4 fill;
         void main() {
-          gl_FragColor = vec4((fill.xyz), fill.w);
+          gl_FragColor = vec4((fill.xyz), 0.5);
         }
     `;
 
       const programInfo = createProgramInfo(gl, [vs, fs]);
+
       this.programInfo = programInfo;
       this.draw(gl, scene, vb);
+      const bufferInfo = createBufferInfoFromArrays(gl, this._buffer);
+      const vertexInfo = createVertexArrayInfo(gl, programInfo, bufferInfo);
+      const uniforms = {
+        resolution: [w, h],
+      };
 
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      resizeCanvasToDisplaySize(c, window.devicePixelRatio || 1);
+      resizeCanvasToDisplaySize(gl.canvas, 1);
       gl.viewport(0, 0, w, h);
+      // setup blending so that all the points aren't opaque
+      gl.enable(gl.BLEND);
+      gl.blendFuncSeparate(
+        gl.SRC_ALPHA,
+        gl.ONE_MINUS_SRC_ALPHA,
+        gl.ONE,
+        gl.ONE_MINUS_SRC_ALPHA
+      );
+
+      gl.clearColor(1, 1, 1, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
       gl.useProgram(programInfo.program);
-      drawObjectList(gl, this.objbuffer);
+      setBuffersAndAttributes(gl, programInfo, vertexInfo);
+      setUniforms(programInfo, uniforms);
+      drawBufferInfo(
+        gl,
+        vertexInfo,
+        gl.TRIANGLES,
+        vertexInfo.numElements,
+        0,
+        this._itemCount
+      );
     } else {
-      console.log("Failed to construct WebGL instance.");
+      error("Failed to construct WebGL instance.");
     }
 
     return this;
