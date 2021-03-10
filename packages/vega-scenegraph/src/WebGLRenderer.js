@@ -137,7 +137,7 @@ inherits(WebGLRenderer, Renderer, {
         precision mediump float;
         varying vec4 fill;
         void main() {
-          gl_FragColor = vec4((fill.xyz), 0.5);
+          gl_FragColor = vec4(fill.xyz, fill.w);
         }
     `;
 

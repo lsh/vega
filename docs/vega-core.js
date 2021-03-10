@@ -17049,10 +17049,10 @@
       for (let i = 0, n = this._segments; i < n; i++) {
         const ang1 = this._angles[i];
         const ang2 = this._angles[(i + 1) % this._segments];
-        const x1 = Math.cos(ang1) * 0.5;
-        const y1 = Math.sin(ang1) * 0.5;
-        const x2 = Math.cos(ang2) * 0.5;
-        const y2 = Math.sin(ang2) * 0.5;
+        const x1 = Math.cos(ang1);
+        const y1 = Math.sin(ang1);
+        const x2 = Math.cos(ang2);
+        const y2 = Math.sin(ang2);
 
         this._positions.push(x1, y1, 0, 0, 0, 0, x2, y2, 0);
       }
@@ -17078,7 +17078,9 @@
 
       this._colors.push(col.r / 255, col.g / 255, col.b / 255, fillOpacity);
 
-      this._scales.push(size, size);
+      const r = Math.sqrt(size) / 2;
+
+      this._scales.push(r, r);
     }
   }
 
@@ -17213,7 +17215,7 @@
         "\n        attribute vec2 position;\n        attribute vec2 center;\n        attribute vec2 scale;\n        attribute vec4 color;\n        uniform vec2 resolution;\n        varying vec4 fill;\n\n        void main() {\n          fill = color;\n          vec2 pos = position * scale;\n          pos += center;\n          pos /= resolution;\n          pos.y = 1.0-pos.y;\n          pos = pos*2.0-1.0;\n          gl_Position = vec4(pos, 0, 1);\n        }\n    ";
         const fs =
         /*glsl*/
-        "\n        precision mediump float;\n        varying vec4 fill;\n        void main() {\n          gl_FragColor = vec4((fill.xyz), 0.5);\n        }\n    ";
+        "\n        precision mediump float;\n        varying vec4 fill;\n        void main() {\n          gl_FragColor = vec4((fill.xyz), fill.w);\n        }\n    ";
         const programInfo = createProgramInfo(gl, [vs, fs]);
         this.programInfo = programInfo;
         this.draw(gl, scene, vb);
